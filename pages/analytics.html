@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Analytics & Reports</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html" class="active">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>📊 Analytics & Reports</h2>
+        <p>View statistics and growth metrics for your organization.</p>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Members</h3>
+                <div class="value" id="total-members">0</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
+                <h3>Total Visitors</h3>
+                <div class="value" id="total-visitors">0</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <h3>Total Tithes & Offerings</h3>
+                <div class="value" id="total-tithes">$0</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <h3>Total Attendance</h3>
+                <div class="value" id="total-attendance">0</div>
+            </div>
+        </div>
+        
+        <h3>Growth Charts</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; padding: 30px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+                <h4>Members Growth</h4>
+                <p style="font-size: 48px; color: #667eea;">📈</p>
+                <p>Tracking member growth over time</p>
+            </div>
+            <div style="flex: 1; min-width: 300px; padding: 30px; background: #f8f9fa; border-radius: 10px; text-align: center;">
+                <h4>Financial Trends</h4>
+                <p style="font-size: 48px; color: #56ab2f;">💹</p>
+                <p>Tithes and offerings analysis</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        initializeFirebase();
+        
+        function updateAnalytics() {
+            loadFromFirebase('members', (members) => {
+                document.getElementById('total-members').textContent = members.length;
+            });
+            
+            loadFromFirebase('visitors', (visitors) => {
+                document.getElementById('total-visitors').textContent = visitors.length;
+            });
+            
+            loadFromFirebase('tithes', (tithes) => {
+                const total = tithes.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+                document.getElementById('total-tithes').textContent = '$' + total.toFixed(2);
+            });
+            
+            loadFromFirebase('attendance', (attendance) => {
+                const total = attendance.reduce((sum, a) => sum + (parseInt(a.total) || 0), 0);
+                document.getElementById('total-attendance').textContent = total;
+            });
+        }
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+        
+        updateAnalytics();
+    </script>
+</body>
+</html>

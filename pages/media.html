@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Center - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+    <style>
+        #media-canvas {
+            border: 2px solid #667eea;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: white;
+            cursor: crosshair;
+        }
+        .media-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .media-controls button {
+            flex: 1;
+            min-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Media Center</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html" class="active">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>🎨 Media Center</h2>
+        <p>Create graphics, posters, and visual materials for your organization.</p>
+        
+        <canvas id="media-canvas" width="800" height="500"></canvas>
+        
+        <div class="media-controls">
+            <button id="add-title" class="btn-secondary">Add Title</button>
+            <button id="add-verse" class="btn-secondary">Add Scripture Verse</button>
+            <button id="clear-canvas">Clear Canvas</button>
+            <button id="download-poster">Download Poster</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <label for="text-input">Custom Text:</label>
+            <input type="text" id="text-input" placeholder="Enter text to add to canvas" style="width: 100%; max-width: 600px;">
+            <button id="add-custom-text" class="btn-secondary" style="margin-top: 10px;">Add Custom Text</button>
+        </div>
+    </main>
+
+    <script>
+        initializeFirebase();
+        
+        const canvas = document.getElementById('media-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Initialize canvas with gradient background
+        function initCanvas() {
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        initCanvas();
+        
+        document.getElementById('add-title').addEventListener('click', () => {
+            ctx.font = 'bold 48px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText('Charity and Faith Mission', canvas.width / 2, 100);
+        });
+        
+        document.getElementById('add-verse').addEventListener('click', () => {
+            ctx.font = '24px Georgia';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText('For God so loved the world...', canvas.width / 2, canvas.height / 2);
+            ctx.font = '18px Georgia';
+            ctx.fillText('- John 3:16', canvas.width / 2, canvas.height / 2 + 40);
+        });
+        
+        document.getElementById('add-custom-text').addEventListener('click', () => {
+            const text = document.getElementById('text-input').value;
+            if (text) {
+                ctx.font = '32px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText(text, canvas.width / 2, canvas.height - 100);
+                document.getElementById('text-input').value = '';
+            } else {
+                alert('Please enter some text first!');
+            }
+        });
+        
+        document.getElementById('clear-canvas').addEventListener('click', () => {
+            if (confirm('Clear the entire canvas?')) {
+                initCanvas();
+            }
+        });
+        
+        document.getElementById('download-poster').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'charity-faith-mission-poster.png';
+            link.href = canvas.toDataURL();
+            link.click();
+            alert('Poster downloaded successfully!');
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

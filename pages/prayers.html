@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Requests - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Prayer Requests</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html" class="active">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>🙏 Prayer Requests</h2>
+        <p>Manage prayer requests and intercession for your community.</p>
+        
+        <form id="add-prayer-form">
+            <input type="text" id="prayer-name" placeholder="Requester Name" required>
+            <textarea id="prayer-request" placeholder="Prayer Request" required></textarea>
+            <select id="prayer-status">
+                <option value="Pending">Pending</option>
+                <option value="Praying">Praying</option>
+                <option value="Answered">Answered</option>
+            </select>
+            <button type="submit">Submit Prayer Request</button>
+        </form>
+        
+        <table id="prayers-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Request</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </main>
+
+    <script>
+        initializeFirebase();
+        const COLLECTION = 'prayers';
+        
+        function populateTable() {
+            loadFromFirebase(COLLECTION, (data) => {
+                const tbody = document.querySelector('#prayers-table tbody');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No prayer requests yet. Submit your first request above!</td></tr>';
+                    return;
+                }
+                
+                data.forEach((prayer, index) => {
+                    const row = document.createElement('tr');
+                    const date = prayer.createdAt ? new Date(prayer.createdAt.seconds * 1000).toLocaleDateString() : new Date().toLocaleDateString();
+                    
+                    row.innerHTML = `
+                        <td>${prayer.name || ''}</td>
+                        <td>${prayer.request || ''}</td>
+                        <td>${prayer.status || 'Pending'}</td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="btn-danger" onclick="deletePrayer('${prayer.id || index}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+        
+        window.deletePrayer = function(id) {
+            if (confirm('Are you sure you want to delete this prayer request?')) {
+                deleteFromFirebase(COLLECTION, id).then(() => {
+                    populateTable();
+                });
+            }
+        };
+        
+        document.getElementById('add-prayer-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const prayerData = {
+                name: document.getElementById('prayer-name').value,
+                request: document.getElementById('prayer-request').value,
+                status: document.getElementById('prayer-status').value
+            };
+            
+            saveToFirebase(COLLECTION, prayerData).then(() => {
+                e.target.reset();
+                populateTable();
+                alert('Prayer request submitted successfully!');
+            });
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+        
+        populateTable();
+    </script>
+</body>
+</html>

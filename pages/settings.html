@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Settings</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html" class="active">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>⚙️ Settings</h2>
+        <p>Configure system preferences and manage data.</p>
+        
+        <h3>Appearance</h3>
+        <form id="appearance-form">
+            <label for="theme-select">Theme:</label>
+            <select id="theme-select">
+                <option value="light">Light Theme</option>
+                <option value="dark">Dark Theme</option>
+            </select>
+            <button type="button" id="save-theme" class="btn-secondary">Save Theme</button>
+        </form>
+        
+        <h3>Organization Information</h3>
+        <form id="org-form">
+            <input type="text" id="org-name" placeholder="Organization Name" value="Charity and Faith Mission">
+            <input type="email" id="org-email" placeholder="Contact Email">
+            <input type="tel" id="org-phone" placeholder="Contact Phone">
+            <input type="text" id="org-address" placeholder="Address">
+            <button type="submit" class="btn-secondary">Save Organization Info</button>
+        </form>
+        
+        <h3>Data Management</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+            <button id="backup-data" class="btn-secondary">Backup All Data</button>
+            <button id="restore-data" class="btn-secondary">Restore Data</button>
+            <button id="clear-data" class="btn-danger">Clear All Data</button>
+        </div>
+        
+        <h3>Firebase Configuration</h3>
+        <p style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <strong>Status:</strong> <span id="firebase-status">Checking...</span><br>
+            <small>To enable Firebase sync, update the configuration in firebase-config.js with your Firebase project credentials.</small>
+        </p>
+        
+        <h3>About</h3>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <h4>Charity and Faith Mission Management System</h4>
+            <p>Version 2.0</p>
+            <p>A comprehensive management system designed for charitable organizations and faith-based communities.</p>
+            <p><strong>Features:</strong></p>
+            <ul>
+                <li>Member & Visitor Management</li>
+                <li>Events & Attendance Tracking</li>
+                <li>Financial Contributions Management</li>
+                <li>Prayer Requests & Sermon Library</li>
+                <li>Volunteer Coordination</li>
+                <li>Analytics & Reports</li>
+                <li>Media Creation Tools</li>
+                <li>Firebase Integration for Cloud Sync</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        initializeFirebase();
+        
+        // Check Firebase status
+        setTimeout(() => {
+            const statusEl = document.getElementById('firebase-status');
+            if (db) {
+                statusEl.textContent = '✅ Connected to Firebase';
+                statusEl.style.color = 'green';
+            } else {
+                statusEl.textContent = '⚠️ Using Local Storage (Firebase not configured)';
+                statusEl.style.color = 'orange';
+            }
+        }, 1000);
+        
+        // Theme management
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.getElementById('theme-select').value = savedTheme;
+        applyTheme(savedTheme);
+        
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.style.background = 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)';
+                document.querySelector('main').style.background = '#2c3e50';
+                document.querySelector('main').style.color = '#ecf0f1';
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                document.querySelector('main').style.background = 'white';
+                document.querySelector('main').style.color = '#333';
+            }
+        }
+        
+        document.getElementById('save-theme').addEventListener('click', () => {
+            const theme = document.getElementById('theme-select').value;
+            localStorage.setItem('theme', theme);
+            applyTheme(theme);
+            alert('Theme saved successfully!');
+        });
+        
+        // Organization info
+        document.getElementById('org-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const orgData = {
+                name: document.getElementById('org-name').value,
+                email: document.getElementById('org-email').value,
+                phone: document.getElementById('org-phone').value,
+                address: document.getElementById('org-address').value
+            };
+            localStorage.setItem('org_info', JSON.stringify(orgData));
+            alert('Organization information saved!');
+        });
+        
+        // Load saved org info
+        const savedOrgInfo = localStorage.getItem('org_info');
+        if (savedOrgInfo) {
+            const orgData = JSON.parse(savedOrgInfo);
+            document.getElementById('org-name').value = orgData.name || 'Charity and Faith Mission';
+            document.getElementById('org-email').value = orgData.email || '';
+            document.getElementById('org-phone').value = orgData.phone || '';
+            document.getElementById('org-address').value = orgData.address || '';
+        }
+        
+        // Backup data
+        document.getElementById('backup-data').addEventListener('click', () => {
+            const allData = {
+                members: JSON.parse(localStorage.getItem('charity_members')) || [],
+                visitors: JSON.parse(localStorage.getItem('charity_visitors')) || [],
+                events: JSON.parse(localStorage.getItem('charity_events')) || [],
+                tithes: JSON.parse(localStorage.getItem('charity_tithes')) || [],
+                attendance: JSON.parse(localStorage.getItem('charity_attendance')) || [],
+                prayers: JSON.parse(localStorage.getItem('charity_prayers')) || [],
+                sermons: JSON.parse(localStorage.getItem('charity_sermons')) || [],
+                volunteers: JSON.parse(localStorage.getItem('charity_volunteers')) || [],
+                leaders: JSON.parse(localStorage.getItem('charity_leaders')) || [],
+                org_info: JSON.parse(localStorage.getItem('org_info')) || {}
+            };
+            
+            const blob = new Blob([JSON.stringify(allData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `charity-faith-mission-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            alert('Data backup downloaded successfully!');
+        });
+        
+        // Restore data
+        document.getElementById('restore-data').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        Object.keys(data).forEach(key => {
+                            if (key === 'org_info') {
+                                localStorage.setItem(key, JSON.stringify(data[key]));
+                            } else {
+                                localStorage.setItem(`charity_${key}`, JSON.stringify(data[key]));
+                            }
+                        });
+                        alert('Data restored successfully! Page will reload.');
+                        location.reload();
+                    } catch (error) {
+                        alert('Error restoring data. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+        
+        // Clear all data
+        document.getElementById('clear-data').addEventListener('click', () => {
+            if (confirm('⚠️ Are you sure you want to clear ALL data? This action cannot be undone!')) {
+                if (confirm('This will delete all members, visitors, events, and other records. Continue?')) {
+                    localStorage.clear();
+                    setTimeout(() => {
+                        alert('All data cleared successfully! Page will reload.');
+                        location.reload();
+                    }, 100);
+                }
+            }
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

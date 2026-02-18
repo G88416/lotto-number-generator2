@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Management - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Volunteer Management</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html" class="active">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>⭐ Volunteer Management</h2>
+        <p>Coordinate and manage volunteer activities within your organization.</p>
+        
+        <form id="add-volunteer-form">
+            <input type="text" id="volunteer-name" placeholder="Volunteer Name" required>
+            <input type="text" id="volunteer-role" placeholder="Role/Department">
+            <input type="tel" id="volunteer-contact" placeholder="Contact Number">
+            <input type="email" id="volunteer-email" placeholder="Email">
+            <select id="volunteer-availability">
+                <option value="">Availability</option>
+                <option value="Weekdays">Weekdays</option>
+                <option value="Weekends">Weekends</option>
+                <option value="Any Day">Any Day</option>
+            </select>
+            <button type="submit">Add Volunteer</button>
+        </form>
+        
+        <table id="volunteers-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Contact</th>
+                    <th>Email</th>
+                    <th>Availability</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </main>
+
+    <script>
+        initializeFirebase();
+        const COLLECTION = 'volunteers';
+        
+        function populateTable() {
+            loadFromFirebase(COLLECTION, (data) => {
+                const tbody = document.querySelector('#volunteers-table tbody');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No volunteers yet. Add your first volunteer above!</td></tr>';
+                    return;
+                }
+                
+                data.forEach((volunteer, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${volunteer.name || ''}</td>
+                        <td>${volunteer.role || ''}</td>
+                        <td>${volunteer.contact || ''}</td>
+                        <td>${volunteer.email || ''}</td>
+                        <td>${volunteer.availability || ''}</td>
+                        <td>
+                            <button class="btn-danger" onclick="deleteVolunteer('${volunteer.id || index}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+        
+        window.deleteVolunteer = function(id) {
+            if (confirm('Are you sure you want to delete this volunteer?')) {
+                deleteFromFirebase(COLLECTION, id).then(() => {
+                    populateTable();
+                });
+            }
+        };
+        
+        document.getElementById('add-volunteer-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const volunteerData = {
+                name: document.getElementById('volunteer-name').value,
+                role: document.getElementById('volunteer-role').value,
+                contact: document.getElementById('volunteer-contact').value,
+                email: document.getElementById('volunteer-email').value,
+                availability: document.getElementById('volunteer-availability').value
+            };
+            
+            saveToFirebase(COLLECTION, volunteerData).then(() => {
+                e.target.reset();
+                populateTable();
+                alert('Volunteer added successfully!');
+            });
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+        
+        populateTable();
+    </script>
+</body>
+</html>

@@ -3,730 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Church Management System</title>
+    <title>Charity and Faith Mission</title>
+    <link rel="stylesheet" href="common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        header {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        header h1 {
-            margin: 0;
-        }
-        nav {
-            background-color: #343a40;
-            color: white;
-            width: 200px;
-            position: fixed;
-            height: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        nav ul {
-            list-style: none;
-            padding: 0;
-        }
-        nav ul li {
-            margin: 10px 0;
-        }
-        nav ul li a {
-            color: white;
-            text-decoration: none;
-            display: block;
-        }
-        nav ul li a:hover {
-            background-color: #495057;
-            padding: 5px;
-            border-radius: 5px;
-        }
-        main {
-            margin-left: 220px;
-            padding: 20px;
-        }
-        section {
-            margin-bottom: 40px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h2 {
-            color: #007bff;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table th, table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        table th {
-            background-color: #f8f9fa;
-        }
-        form {
+        .dashboard-grid {
             display: grid;
-            gap: 10px;
-            max-width: 600px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
         }
-        input, select, button {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #28a745;
+        .dashboard-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        .hidden {
-            display: none;
-        }
-        #analytics-charts {
+            padding: 30px;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             display: flex;
-            justify-content: space-around;
-        }
-        .chart-placeholder {
-            width: 300px;
-            height: 200px;
-            background-color: #e9ecef;
-            display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            text-align: center;
         }
-        #media-canvas {
-            border: 1px solid #ccc;
-            margin-top: 10px;
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
-        @media (max-width: 768px) {
-            nav {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            main {
-                margin-left: 0;
-            }
+        .dashboard-card h3 {
+            margin-bottom: 10px;
+            font-size: 22px;
+        }
+        .dashboard-card p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .dashboard-card .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .alt-card {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        }
+        .alt-card2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .alt-card3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Advanced Church Management System</h1>
         <div>
-            <button id="logout">Logout 🚪</button>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Comprehensive Management System</p>
         </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
     </header>
+    
     <nav>
         <ul>
-            <li><a href="#members">Member Directory</a></li>
-            <li><a href="#visitors">Visitor Directory</a></li>
-            <li><a href="#analytics">Church Analytics</a></li>
-            <li><a href="#events">Events Management</a></li>
-            <li><a href="#tithes">Tithe & Offering</a></li>
-            <li><a href="#admin">Church Admin</a></li>
-            <li><a href="#attendance">Church Attendance</a></li>
-            <li><a href="#prayers">Prayer Requests</a></li> <!-- New Feature -->
-            <li><a href="#sermons">Sermon Library</a></li> <!-- New Feature -->
-            <li><a href="#volunteers">Volunteer Management</a></li> <!-- New Feature -->
-            <li><a href="#media">Media Center</a></li>
-            <li><a href="#settings">Settings</a></li>
+            <li><a href="index.html" class="active">Dashboard</a></li>
+            <li><a href="pages/members.html">Members</a></li>
+            <li><a href="pages/visitors.html">Visitors</a></li>
+            <li><a href="pages/analytics.html">Analytics</a></li>
+            <li><a href="pages/events.html">Events</a></li>
+            <li><a href="pages/tithes.html">Tithes & Offerings</a></li>
+            <li><a href="pages/admin.html">Admin</a></li>
+            <li><a href="pages/attendance.html">Attendance</a></li>
+            <li><a href="pages/prayers.html">Prayer Requests</a></li>
+            <li><a href="pages/sermons.html">Sermon Library</a></li>
+            <li><a href="pages/volunteers.html">Volunteers</a></li>
+            <li><a href="pages/media.html">Media Center</a></li>
+            <li><a href="pages/settings.html">Settings</a></li>
         </ul>
     </nav>
+    
     <main>
-        <section id="members">
-            <h2>Member Directory</h2>
-            <form id="add-member-form">
-                <input type="text" id="member-name" placeholder="Full Name" required>
-                <input type="text" id="member-surname" placeholder="Surname" required>
-                <input type="text" id="member-id" placeholder="ID/Passport">
-                <select id="member-gender">
-                    <option value="">Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-                <input type="number" id="member-age" placeholder="Age">
-                <input type="tel" id="member-cell" placeholder="Cellphone">
-                <input type="email" id="member-email" placeholder="Email">
-                <input type="text" id="member-branch" placeholder="Branch">
-                <button type="submit">Add Member</button>
-            </form>
-            <table id="members-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Surname</th>
-                        <th>ID</th>
-                        <th>Gender</th>
-                        <th>Age</th>
-                        <th>Cell</th>
-                        <th>Email</th>
-                        <th>Branch</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <button id="export-members">Export Members</button>
-        </section>
-
-        <section id="visitors">
-            <h2>Visitor Directory</h2>
-            <form id="add-visitor-form">
-                <input type="text" id="visitor-name" placeholder="Name" required>
-                <input type="email" id="visitor-email" placeholder="Email">
-                <input type="tel" id="visitor-cell" placeholder="Cell">
-                <input type="text" id="visitor-address" placeholder="Address">
-                <input type="date" id="visitor-date" placeholder="Visit Date">
-                <input type="text" id="visitor-branch" placeholder="Branch">
-                <textarea id="visitor-notes" placeholder="Notes"></textarea>
-                <button type="submit">Add Visitor</button>
-            </form>
-            <table id="visitors-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Cell</th>
-                        <th>Address</th>
-                        <th>Date</th>
-                        <th>Branch</th>
-                        <th>Notes</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <button id="send-followup">Send Follow-up</button>
-        </section>
-
-        <section id="analytics">
-            <h2>Church Analytics</h2>
-            <div id="analytics-metrics">
-                <p>Total Members: <span id="total-members">0</span></p>
-                <p>Total Visitors: <span id="total-visitors">0</span></p>
-                <p>Total Tithes: <span id="total-tithes">0</span></p>
-                <p>Total Attendance: <span id="total-attendance">0</span></p>
-            </div>
-            <div id="analytics-charts">
-                <div class="chart-placeholder">Members Growth Chart</div>
-                <div class="chart-placeholder">Tithes Trend</div>
-            </div>
-        </section>
-
-        <section id="events">
-            <h2>Events Management</h2>
-            <form id="add-event-form">
-                <input type="text" id="event-title" placeholder="Title" required>
-                <textarea id="event-desc" placeholder="Description"></textarea>
-                <input type="date" id="event-date" required>
-                <input type="text" id="event-branch" placeholder="Branch">
-                <input type="text" id="event-organizer" placeholder="Organizer">
-                <button type="submit">Add Event</button>
-            </form>
-            <table id="events-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Date</th>
-                        <th>Branch</th>
-                        <th>Organizer</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="tithes">
-            <h2>Tithe & Offering</h2>
-            <form id="add-tithe-form">
-                <input type="text" id="tithe-member" placeholder="Member Name" required>
-                <select id="tithe-type">
-                    <option value="Tithe">Tithe</option>
-                    <option value="Offering">Offering</option>
-                </select>
-                <input type="number" id="tithe-amount" placeholder="Amount" required>
-                <input type="date" id="tithe-date" required>
-                <input type="text" id="tithe-branch" placeholder="Branch">
-                <button type="submit">Record</button>
-            </form>
-            <table id="tithes-table">
-                <thead>
-                    <tr>
-                        <th>Member</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Date</th>
-                        <th>Branch</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="admin">
-            <h2>Church Admin</h2>
-            <!-- Leaders, Ministries, etc. -->
-            <h3>Leaders</h3>
-            <form id="add-leader-form">
-                <input type="text" id="leader-name" placeholder="Name" required>
-                <input type="text" id="leader-role" placeholder="Role">
-                <button type="submit">Add Leader</button>
-            </form>
-            <ul id="leaders-list"></ul>
-        </section>
-
-        <section id="attendance">
-            <h2>Church Attendance</h2>
-            <form id="log-attendance-form">
-                <input type="text" id="attendance-branch" placeholder="Branch" required>
-                <input type="date" id="attendance-date" required>
-                <input type="number" id="attendance-youth" placeholder="Youth">
-                <input type="number" id="attendance-adult" placeholder="Adult">
-                <input type="number" id="attendance-sunday" placeholder="Sunday School">
-                <button type="submit">Log</button>
-            </form>
-            <table id="attendance-table">
-                <thead>
-                    <tr>
-                        <th>Branch</th>
-                        <th>Date</th>
-                        <th>Youth</th>
-                        <th>Adult</th>
-                        <th>Sunday School</th>
-                        <th>Total</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="prayers">
-            <h2>Prayer Requests (New Feature)</h2>
-            <form id="add-prayer-form">
-                <input type="text" id="prayer-name" placeholder="Requester Name" required>
-                <textarea id="prayer-request" placeholder="Prayer Request" required></textarea>
-                <button type="submit">Submit Request</button>
-            </form>
-            <table id="prayers-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Request</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="sermons">
-            <h2>Sermon Library (New Feature)</h2>
-            <form id="add-sermon-form">
-                <input type="text" id="sermon-title" placeholder="Title" required>
-                <input type="text" id="sermon-speaker" placeholder="Speaker">
-                <input type="date" id="sermon-date">
-                <input type="url" id="sermon-link" placeholder="Audio/Video Link">
-                <button type="submit">Add Sermon</button>
-            </form>
-            <table id="sermons-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Speaker</th>
-                        <th>Date</th>
-                        <th>Link</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="volunteers">
-            <h2>Volunteer Management (New Feature)</h2>
-            <form id="add-volunteer-form">
-                <input type="text" id="volunteer-name" placeholder="Name" required>
-                <input type="text" id="volunteer-role" placeholder="Role">
-                <input type="tel" id="volunteer-contact" placeholder="Contact">
-                <button type="submit">Add Volunteer</button>
-            </form>
-            <table id="volunteers-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Role</th>
-                        <th>Contact</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </section>
-
-        <section id="media">
-            <h2>Media Center</h2>
-            <canvas id="media-canvas" width="400" height="300"></canvas>
-            <button id="draw-text">Add Text</button>
-            <button id="upload-image">Upload Image</button>
-            <button id="download-poster">Download Poster</button>
-        </section>
-
-        <section id="settings">
-            <h2>Settings</h2>
-            <label>Theme:</label>
-            <select id="theme-select">
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-            </select>
-            <button id="save-settings">Save</button>
-            <button id="backup-data">Backup Data</button>
-        </section>
+        <h2>Welcome to Charity and Faith Mission</h2>
+        <p>Manage your organization's activities with comprehensive tools designed for efficiency and productivity.</p>
+        
+        <div class="dashboard-grid">
+            <a href="pages/members.html" class="dashboard-card">
+                <div class="icon">👥</div>
+                <h3>Member Directory</h3>
+                <p>Manage member information, contact details, and engagement</p>
+            </a>
+            
+            <a href="pages/visitors.html" class="dashboard-card alt-card">
+                <div class="icon">🤝</div>
+                <h3>Visitor Management</h3>
+                <p>Track and follow up with visitors</p>
+            </a>
+            
+            <a href="pages/analytics.html" class="dashboard-card alt-card2">
+                <div class="icon">📊</div>
+                <h3>Analytics & Reports</h3>
+                <p>View statistics and growth metrics</p>
+            </a>
+            
+            <a href="pages/events.html" class="dashboard-card alt-card3">
+                <div class="icon">📅</div>
+                <h3>Events Management</h3>
+                <p>Plan and organize events</p>
+            </a>
+            
+            <a href="pages/tithes.html" class="dashboard-card">
+                <div class="icon">💰</div>
+                <h3>Tithes & Offerings</h3>
+                <p>Track financial contributions</p>
+            </a>
+            
+            <a href="pages/attendance.html" class="dashboard-card alt-card">
+                <div class="icon">✅</div>
+                <h3>Attendance Tracking</h3>
+                <p>Record service attendance</p>
+            </a>
+            
+            <a href="pages/prayers.html" class="dashboard-card alt-card2">
+                <div class="icon">🙏</div>
+                <h3>Prayer Requests</h3>
+                <p>Manage prayer requests and intercession</p>
+            </a>
+            
+            <a href="pages/sermons.html" class="dashboard-card alt-card3">
+                <div class="icon">📖</div>
+                <h3>Sermon Library</h3>
+                <p>Archive sermons and teachings</p>
+            </a>
+            
+            <a href="pages/volunteers.html" class="dashboard-card">
+                <div class="icon">⭐</div>
+                <h3>Volunteer Management</h3>
+                <p>Coordinate volunteer activities</p>
+            </a>
+            
+            <a href="pages/admin.html" class="dashboard-card alt-card">
+                <div class="icon">🛡️</div>
+                <h3>Administration</h3>
+                <p>Manage leaders and ministries</p>
+            </a>
+            
+            <a href="pages/media.html" class="dashboard-card alt-card2">
+                <div class="icon">🎨</div>
+                <h3>Media Center</h3>
+                <p>Create graphics and materials</p>
+            </a>
+            
+            <a href="pages/settings.html" class="dashboard-card alt-card3">
+                <div class="icon">⚙️</div>
+                <h3>Settings</h3>
+                <p>Configure system preferences</p>
+            </a>
+        </div>
     </main>
 
     <script>
-        // LocalStorage Keys
-        const storageKeys = {
-            members: 'church_members',
-            visitors: 'church_visitors',
-            events: 'church_events',
-            tithes: 'church_tithes',
-            attendance: 'church_attendance',
-            prayers: 'church_prayers',
-            sermons: 'church_sermons',
-            volunteers: 'church_volunteers',
-            leaders: 'church_leaders'
-        };
-
-        // Generic function to load data from localStorage
-        function loadData(key) {
-            return JSON.parse(localStorage.getItem(key)) || [];
-        }
-
-        // Generic function to save data to localStorage
-        function saveData(key, data) {
-            localStorage.setItem(key, JSON.stringify(data));
-        }
-
-        // Generic function to add row to table
-        function addRow(tableBody, data, actionsCallback) {
-            const row = document.createElement('tr');
-            data.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell;
-                row.appendChild(td);
-            });
-            const actionsTd = document.createElement('td');
-            const editBtn = document.createElement('button');
-            editBtn.textContent = 'Edit';
-            editBtn.onclick = () => {/* Edit logic */};
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = 'Delete';
-            deleteBtn.onclick = actionsCallback;
-            actionsTd.append(editBtn, deleteBtn);
-            row.appendChild(actionsTd);
-            tableBody.appendChild(row);
-        }
-
-        // Generic function to populate table
-        function populateTable(tableId, key, columnsMapper, actionsCallback) {
-            const tableBody = document.querySelector(`#${tableId} tbody`);
-            tableBody.innerHTML = '';
-            const data = loadData(key);
-            data.forEach((item, index) => {
-                const rowData = columnsMapper(item);
-                addRow(tableBody, rowData, () => {
-                    data.splice(index, 1);
-                    saveData(key, data);
-                    populateTable(tableId, key, columnsMapper, actionsCallback);
-                    updateAnalytics();
-                });
-            });
-        }
-
-        // Update Analytics
-        function updateAnalytics() {
-            document.getElementById('total-members').textContent = loadData(storageKeys.members).length;
-            document.getElementById('total-visitors').textContent = loadData(storageKeys.visitors).length;
-            const tithes = loadData(storageKeys.tithes).reduce((sum, t) => sum + (t.amount || 0), 0);
-            document.getElementById('total-tithes').textContent = tithes;
-            const attendance = loadData(storageKeys.attendance).reduce((sum, a) => sum + (a.total || 0), 0);
-            document.getElementById('total-attendance').textContent = attendance;
-        }
-
-        // Members
-        const membersColumns = (m) => [m.name, m.surname, m.id, m.gender, m.age, m.cell, m.email, m.branch];
-        document.getElementById('add-member-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.members);
-            data.push({
-                name: document.getElementById('member-name').value,
-                surname: document.getElementById('member-surname').value,
-                id: document.getElementById('member-id').value,
-                gender: document.getElementById('member-gender').value,
-                age: document.getElementById('member-age').value,
-                cell: document.getElementById('member-cell').value,
-                email: document.getElementById('member-email').value,
-                branch: document.getElementById('member-branch').value
-            });
-            saveData(storageKeys.members, data);
-            populateTable('members-table', storageKeys.members, membersColumns);
-            e.target.reset();
-            updateAnalytics();
-        });
-        populateTable('members-table', storageKeys.members, membersColumns);
-
-        // Visitors
-        const visitorsColumns = (v) => [v.name, v.email, v.cell, v.address, v.date, v.branch, v.notes];
-        document.getElementById('add-visitor-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.visitors);
-            data.push({
-                name: document.getElementById('visitor-name').value,
-                email: document.getElementById('visitor-email').value,
-                cell: document.getElementById('visitor-cell').value,
-                address: document.getElementById('visitor-address').value,
-                date: document.getElementById('visitor-date').value,
-                branch: document.getElementById('visitor-branch').value,
-                notes: document.getElementById('visitor-notes').value
-            });
-            saveData(storageKeys.visitors, data);
-            populateTable('visitors-table', storageKeys.visitors, visitorsColumns);
-            e.target.reset();
-            updateAnalytics();
-        });
-        populateTable('visitors-table', storageKeys.visitors, visitorsColumns);
-
-        // Events
-        const eventsColumns = (e) => [e.title, e.desc, e.date, e.branch, e.organizer];
-        document.getElementById('add-event-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.events);
-            data.push({
-                title: document.getElementById('event-title').value,
-                desc: document.getElementById('event-desc').value,
-                date: document.getElementById('event-date').value,
-                branch: document.getElementById('event-branch').value,
-                organizer: document.getElementById('event-organizer').value
-            });
-            saveData(storageKeys.events, data);
-            populateTable('events-table', storageKeys.events, eventsColumns);
-            e.target.reset();
-        });
-        populateTable('events-table', storageKeys.events, eventsColumns);
-
-        // Tithes
-        const tithesColumns = (t) => [t.member, t.type, t.amount, t.date, t.branch];
-        document.getElementById('add-tithe-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.tithes);
-            const amount = parseFloat(document.getElementById('tithe-amount').value);
-            data.push({
-                member: document.getElementById('tithe-member').value,
-                type: document.getElementById('tithe-type').value,
-                amount: amount,
-                date: document.getElementById('tithe-date').value,
-                branch: document.getElementById('tithe-branch').value
-            });
-            saveData(storageKeys.tithes, data);
-            populateTable('tithes-table', storageKeys.tithes, tithesColumns);
-            e.target.reset();
-            updateAnalytics();
-        });
-        populateTable('tithes-table', storageKeys.tithes, tithesColumns);
-
-        // Attendance
-        const attendanceColumns = (a) => [a.branch, a.date, a.youth, a.adult, a.sunday, a.total];
-        document.getElementById('log-attendance-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.attendance);
-            const youth = parseInt(document.getElementById('attendance-youth').value) || 0;
-            const adult = parseInt(document.getElementById('attendance-adult').value) || 0;
-            const sunday = parseInt(document.getElementById('attendance-sunday').value) || 0;
-            const total = youth + adult + sunday;
-            data.push({
-                branch: document.getElementById('attendance-branch').value,
-                date: document.getElementById('attendance-date').value,
-                youth: youth,
-                adult: adult,
-                sunday: sunday,
-                total: total
-            });
-            saveData(storageKeys.attendance, data);
-            populateTable('attendance-table', storageKeys.attendance, attendanceColumns);
-            e.target.reset();
-            updateAnalytics();
-        });
-        populateTable('attendance-table', storageKeys.attendance, attendanceColumns);
-
-        // Prayers
-        const prayersColumns = (p) => [p.name, p.request, new Date().toLocaleDateString()];
-        document.getElementById('add-prayer-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.prayers);
-            data.push({
-                name: document.getElementById('prayer-name').value,
-                request: document.getElementById('prayer-request').value
-            });
-            saveData(storageKeys.prayers, data);
-            populateTable('prayers-table', storageKeys.prayers, prayersColumns);
-            e.target.reset();
-        });
-        populateTable('prayers-table', storageKeys.prayers, prayersColumns);
-
-        // Sermons
-        const sermonsColumns = (s) => [s.title, s.speaker, s.date, s.link];
-        document.getElementById('add-sermon-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.sermons);
-            data.push({
-                title: document.getElementById('sermon-title').value,
-                speaker: document.getElementById('sermon-speaker').value,
-                date: document.getElementById('sermon-date').value,
-                link: document.getElementById('sermon-link').value
-            });
-            saveData(storageKeys.sermons, data);
-            populateTable('sermons-table', storageKeys.sermons, sermonsColumns);
-            e.target.reset();
-        });
-        populateTable('sermons-table', storageKeys.sermons, sermonsColumns);
-
-        // Volunteers
-        const volunteersColumns = (v) => [v.name, v.role, v.contact];
-        document.getElementById('add-volunteer-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.volunteers);
-            data.push({
-                name: document.getElementById('volunteer-name').value,
-                role: document.getElementById('volunteer-role').value,
-                contact: document.getElementById('volunteer-contact').value
-            });
-            saveData(storageKeys.volunteers, data);
-            populateTable('volunteers-table', storageKeys.volunteers, volunteersColumns);
-            e.target.reset();
-        });
-        populateTable('volunteers-table', storageKeys.volunteers, volunteersColumns);
-
-        // Leaders (simple list)
-        document.getElementById('add-leader-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const data = loadData(storageKeys.leaders);
-            data.push({
-                name: document.getElementById('leader-name').value,
-                role: document.getElementById('leader-role').value
-            });
-            saveData(storageKeys.leaders, data);
-            populateLeaders();
-            e.target.reset();
-        });
-        function populateLeaders() {
-            const list = document.getElementById('leaders-list');
-            list.innerHTML = '';
-            const data = loadData(storageKeys.leaders);
-            data.forEach((l, index) => {
-                const li = document.createElement('li');
-                li.textContent = `${l.name} - ${l.role}`;
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.onclick = () => {
-                    data.splice(index, 1);
-                    saveData(storageKeys.leaders, data);
-                    populateLeaders();
-                };
-                li.appendChild(deleteBtn);
-                list.appendChild(li);
-            });
-        }
-        populateLeaders();
-
-        // Media Center - Basic Canvas
-        const canvas = document.getElementById('media-canvas');
-        const ctx = canvas.getContext('2d');
-        document.getElementById('draw-text').addEventListener('click', () => {
-            ctx.font = '20px Arial';
-            ctx.fillText('Church Poster', 50, 150);
-        });
-        document.getElementById('download-poster').addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.download = 'poster.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-        // Upload Image (placeholder)
-        document.getElementById('upload-image').addEventListener('click', () => {
-            alert('Image upload functionality would go here.');
+        // Initialize Firebase when page loads
+        window.addEventListener('load', () => {
+            initializeFirebase();
         });
 
-        // Settings
-        document.getElementById('theme-select').addEventListener('change', (e) => {
-            document.body.style.backgroundColor = e.target.value === 'dark' ? '#333' : '#f4f4f4';
-            document.body.style.color = e.target.value === 'dark' ? '#fff' : '#333';
-        });
-        document.getElementById('save-settings').addEventListener('click', () => {
-            alert('Settings saved!');
-        });
-        document.getElementById('backup-data').addEventListener('click', () => {
-            const allData = {};
-            Object.keys(storageKeys).forEach(key => {
-                allData[key] = loadData(storageKeys[key]);
-            });
-            const blob = new Blob([JSON.stringify(allData)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'church_data_backup.json';
-            a.click();
-        });
-
-        // Export Members (example)
-        document.getElementById('export-members').addEventListener('click', () => {
-            const data = loadData(storageKeys.members);
-            const csv = 'Name,Surname,ID,Gender,Age,Cell,Email,Branch\n' + data.map(m => Object.values(m).join(',')).join('\n');
-            const blob = new Blob([csv], {type: 'text/csv'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'members.csv';
-            a.click();
-        });
-
-        // Send Follow-up (placeholder)
-        document.getElementById('send-followup').addEventListener('click', () => {
-            alert('Follow-up emails sent!');
-        });
-
-        // Logout (clear storage for demo)
+        // Logout functionality
         document.getElementById('logout').addEventListener('click', () => {
-            if (confirm('Logout? This will clear local data for demo purposes.')) {
-                localStorage.clear();
-                location.reload();
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        setTimeout(() => {
+                            window.location.href = '../index.html';
+                        }, 100);
+                    });
+                } else {
+                    localStorage.clear();
+                    setTimeout(() => {
+                        window.location.href = '../index.html';
+                    }, 100);
+                }
             }
         });
-
-        // Initial Analytics Update
-        updateAnalytics();
     </script>
 </body>
 </html>
