@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tithes & Offerings - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Tithes & Offerings</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html" class="active">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>💰 Tithes & Offerings</h2>
+        <p>Track financial contributions to your organization.</p>
+        
+        <form id="add-tithe-form">
+            <input type="text" id="tithe-member" placeholder="Member Name" required>
+            <select id="tithe-type">
+                <option value="Tithe">Tithe</option>
+                <option value="Offering">Offering</option>
+                <option value="Donation">Donation</option>
+            </select>
+            <input type="number" id="tithe-amount" placeholder="Amount" required step="0.01">
+            <input type="date" id="tithe-date" required>
+            <input type="text" id="tithe-branch" placeholder="Branch">
+            <button type="submit">Record Contribution</button>
+        </form>
+        
+        <table id="tithes-table">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </main>
+
+    <script>
+        initializeFirebase();
+        const COLLECTION = 'tithes';
+        
+        function populateTable() {
+            loadFromFirebase(COLLECTION, (data) => {
+                const tbody = document.querySelector('#tithes-table tbody');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No contributions yet. Add your first record above!</td></tr>';
+                    return;
+                }
+                
+                data.forEach((tithe, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tithe.member || ''}</td>
+                        <td>${tithe.type || ''}</td>
+                        <td>$${parseFloat(tithe.amount || 0).toFixed(2)}</td>
+                        <td>${tithe.date || ''}</td>
+                        <td>${tithe.branch || ''}</td>
+                        <td>
+                            <button class="btn-danger" onclick="deleteTithe('${tithe.id || index}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+        
+        window.deleteTithe = function(id) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                deleteFromFirebase(COLLECTION, id).then(() => {
+                    populateTable();
+                });
+            }
+        };
+        
+        document.getElementById('add-tithe-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const titheData = {
+                member: document.getElementById('tithe-member').value,
+                type: document.getElementById('tithe-type').value,
+                amount: document.getElementById('tithe-amount').value,
+                date: document.getElementById('tithe-date').value,
+                branch: document.getElementById('tithe-branch').value
+            };
+            
+            saveToFirebase(COLLECTION, titheData).then(() => {
+                e.target.reset();
+                populateTable();
+                alert('Contribution recorded successfully!');
+            });
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+        
+        populateTable();
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Attendance Tracking</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes & Offerings</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html" class="active">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>✅ Attendance Tracking</h2>
+        <p>Record service attendance across different groups.</p>
+        
+        <form id="log-attendance-form">
+            <input type="text" id="attendance-branch" placeholder="Branch" required>
+            <input type="date" id="attendance-date" required>
+            <input type="number" id="attendance-youth" placeholder="Youth" min="0">
+            <input type="number" id="attendance-adult" placeholder="Adult" min="0">
+            <input type="number" id="attendance-sunday" placeholder="Sunday School" min="0">
+            <button type="submit">Log Attendance</button>
+        </form>
+        
+        <table id="attendance-table">
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Date</th>
+                    <th>Youth</th>
+                    <th>Adult</th>
+                    <th>Sunday School</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </main>
+
+    <script>
+        initializeFirebase();
+        const COLLECTION = 'attendance';
+        
+        function populateTable() {
+            loadFromFirebase(COLLECTION, (data) => {
+                const tbody = document.querySelector('#attendance-table tbody');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No attendance records yet. Log your first record above!</td></tr>';
+                    return;
+                }
+                
+                data.forEach((record, index) => {
+                    const row = document.createElement('tr');
+                    const youth = parseInt(record.youth) || 0;
+                    const adult = parseInt(record.adult) || 0;
+                    const sunday = parseInt(record.sunday) || 0;
+                    const total = youth + adult + sunday;
+                    
+                    row.innerHTML = `
+                        <td>${record.branch || ''}</td>
+                        <td>${record.date || ''}</td>
+                        <td>${youth}</td>
+                        <td>${adult}</td>
+                        <td>${sunday}</td>
+                        <td><strong>${total}</strong></td>
+                        <td>
+                            <button class="btn-danger" onclick="deleteAttendance('${record.id || index}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+        
+        window.deleteAttendance = function(id) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                deleteFromFirebase(COLLECTION, id).then(() => {
+                    populateTable();
+                });
+            }
+        };
+        
+        document.getElementById('log-attendance-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const youth = parseInt(document.getElementById('attendance-youth').value) || 0;
+            const adult = parseInt(document.getElementById('attendance-adult').value) || 0;
+            const sunday = parseInt(document.getElementById('attendance-sunday').value) || 0;
+            
+            const attendanceData = {
+                branch: document.getElementById('attendance-branch').value,
+                date: document.getElementById('attendance-date').value,
+                youth: youth,
+                adult: adult,
+                sunday: sunday,
+                total: youth + adult + sunday
+            };
+            
+            saveToFirebase(COLLECTION, attendanceData).then(() => {
+                e.target.reset();
+                populateTable();
+                alert('Attendance logged successfully!');
+            });
+        });
+        
+        document.getElementById('logout').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '../index.html';
+                    });
+                } else {
+                    localStorage.clear();
+                    window.location.href = '../index.html';
+                }
+            }
+        });
+        
+        populateTable();
+    </script>
+</body>
+</html>
