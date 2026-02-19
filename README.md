@@ -1,8 +1,18 @@
 # Charity and Faith Mission Management System
 
-A comprehensive web-based management system designed for charitable organizations and faith-based communities.
+A comprehensive web-based management system designed for charitable organizations and faith-based communities with role-based access control.
 
 ## Features
+
+### Authentication & Authorization
+- **Multi-User Login System**: Secure login with role-based access control
+- **Four User Roles**:
+  - **Admin**: Full access to all modules with edit/delete permissions
+  - **Genesis Service**: Access to members, visitors, tithes & offerings, attendance, events, and media
+  - **Branch Co**: Access to members, visitors, tithes & offerings, and attendance
+  - **Pastors Info**: Read-only access to all modules
+- **Session Management**: Secure user sessions with automatic logout
+- **Page-Level Access Control**: Restricted access based on user roles
 
 ### Core Functionality
 - **Member Directory**: Manage member information, contact details, and engagement tracking
@@ -19,6 +29,7 @@ A comprehensive web-based management system designed for charitable organization
 - **Settings**: Configure system preferences and manage data
 
 ### Technical Features
+- **Role-Based Access Control (RBAC)**: Dynamic navigation and permissions based on user role
 - **Multi-Page Architecture**: Each section has its own dedicated page for better organization
 - **Firebase Integration**: Cloud-based data persistence with Firestore
 - **Local Storage Fallback**: Works offline when Firebase is not configured
@@ -26,6 +37,56 @@ A comprehensive web-based management system designed for charitable organization
 - **Modern UI**: Gradient designs and intuitive navigation
 - **Data Export/Import**: Backup and restore functionality
 - **Theme Support**: Light and dark theme options
+- **Read-Only Mode**: Disabled forms for users with view-only permissions
+
+## Login & User Roles
+
+### Getting Started
+
+1. Navigate to the application URL
+2. You will be automatically redirected to the login page (`login.html`)
+3. Enter your credentials and select your role
+4. Click "Login" to access the dashboard
+
+### Demo Credentials
+
+For testing purposes, use these credentials:
+
+| Role | Username | Password | Access Level |
+|------|----------|----------|--------------|
+| **Admin** | admin | admin123 | Full access with edit/delete permissions |
+| **Genesis Service** | genesis | genesis123 | Members, Visitors, Tithes, Attendance, Events, Media |
+| **Branch Co** | branch | branch123 | Members, Visitors, Tithes, Attendance |
+| **Pastors Info** | pastor | pastor123 | All modules (read-only) |
+
+### Role Permissions
+
+#### Admin
+- **Access**: All modules (Members, Visitors, Analytics, Events, Tithes & Offerings, Admin, Attendance, Prayer Requests, Sermon Library, Volunteers, Media Center, Settings)
+- **Permissions**: Full edit and delete permissions
+- **Use Case**: System administrators and senior leadership
+
+#### Genesis Service
+- **Access**: Members, Visitors, Tithes & Offerings, Attendance, Events, Media Center
+- **Permissions**: Full edit and delete permissions
+- **Use Case**: Service coordinators and event managers
+
+#### Branch Co
+- **Access**: Members, Visitors, Tithes & Offerings, Attendance
+- **Permissions**: Full edit and delete permissions
+- **Use Case**: Branch coordinators with limited administrative access
+
+#### Pastors Info
+- **Access**: All modules (same as Admin)
+- **Permissions**: Read-only (no edit or delete)
+- **Use Case**: Pastoral staff who need to view all information but not modify it
+
+### Security Features
+
+- **Session-Based Authentication**: User sessions are stored securely in localStorage
+- **Page-Level Protection**: Unauthorized access attempts redirect to dashboard with alert
+- **Automatic Logout**: Users can securely logout from any page
+- **Role Verification**: Each page verifies user permissions before loading
 
 ## Firebase Setup
 
@@ -63,14 +124,16 @@ To enable Firebase cloud synchronization:
 
 ### Local Development
 1. Clone the repository
-2. Open `index.html` in a web browser
-3. The application works immediately with local storage
-4. Configure Firebase (optional) for cloud sync
+2. Open `login.html` in a web browser to access the login page
+3. Use the demo credentials to login with different roles
+4. The application works immediately with local storage
+5. Configure Firebase (optional) for cloud sync
 
 ### Deployment
 - Deploy to any static web hosting service (Firebase Hosting, Netlify, GitHub Pages, etc.)
 - No server-side code required
 - All data is stored in Firebase or browser localStorage
+- Ensure `login.html` is set as the landing page or index page
 
 ## Browser Compatibility
 - Modern browsers (Chrome, Firefox, Safari, Edge)
@@ -92,26 +155,30 @@ To enable Firebase cloud synchronization:
 
 ## Pages Overview
 
-1. **Dashboard** (`index.html`) - Main landing page with quick access to all features
-2. **Members** (`pages/members.html`) - Member directory and management
-3. **Visitors** (`pages/visitors.html`) - Visitor tracking and follow-up
-4. **Analytics** (`pages/analytics.html`) - Statistics and growth metrics
-5. **Events** (`pages/events.html`) - Event planning and management
-6. **Tithes & Offerings** (`pages/tithes.html`) - Financial contributions tracking
-7. **Admin** (`pages/admin.html`) - Leaders and ministries management
-8. **Attendance** (`pages/attendance.html`) - Service attendance records
-9. **Prayer Requests** (`pages/prayers.html`) - Prayer request management
-10. **Sermon Library** (`pages/sermons.html`) - Sermon archiving
-11. **Volunteers** (`pages/volunteers.html`) - Volunteer coordination
-12. **Media Center** (`pages/media.html`) - Graphics creation tools
-13. **Settings** (`pages/settings.html`) - System configuration
+1. **Login** (`login.html`) - User authentication and role selection
+2. **Dashboard** (`index.html`) - Main landing page with quick access to all features
+3. **Members** (`pages/members.html`) - Member directory and management
+4. **Visitors** (`pages/visitors.html`) - Visitor tracking and follow-up
+5. **Analytics** (`pages/analytics.html`) - Statistics and growth metrics
+6. **Events** (`pages/events.html`) - Event planning and management
+7. **Tithes & Offerings** (`pages/tithes.html`) - Financial contributions tracking
+8. **Admin** (`pages/admin.html`) - Leaders and ministries management
+9. **Attendance** (`pages/attendance.html`) - Service attendance records
+10. **Prayer Requests** (`pages/prayers.html`) - Prayer request management
+11. **Sermon Library** (`pages/sermons.html`) - Sermon archiving
+12. **Volunteers** (`pages/volunteers.html`) - Volunteer coordination
+13. **Media Center** (`pages/media.html`) - Graphics creation tools
+14. **Settings** (`pages/settings.html`) - System configuration
 
 ## Security Notes
 
+- **Demo Credentials**: The current implementation uses hardcoded credentials for demonstration purposes only
+- **Production Use**: For production, implement proper authentication with Firebase Authentication or a backend service
 - Update Firebase security rules to restrict access appropriately
-- Consider implementing Firebase Authentication for user management
 - Keep your Firebase configuration secure
 - Regular backups recommended
+- User sessions are stored in browser localStorage (consider more secure alternatives for production)
+- Implement HTTPS for secure data transmission in production
 
 ## Support
 
