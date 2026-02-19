@@ -58,13 +58,13 @@ function formatDate(dateStr) {
     try {
         // Handle Firestore timestamp objects
         if (dateStr && typeof dateStr === 'object' && dateStr.seconds) {
-            return new Date(dateStr.seconds * 1000).toLocaleDateString('en-ZA', {
+            return new Date(dateStr.seconds * 1000).toLocaleDateString(undefined, {
                 year: 'numeric', month: 'short', day: 'numeric'
             });
         }
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return dateStr;
-        return date.toLocaleDateString('en-ZA', {
+        return date.toLocaleDateString(undefined, {
             year: 'numeric', month: 'short', day: 'numeric'
         });
     } catch (e) {

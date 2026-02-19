@@ -127,7 +127,7 @@
                     <td>${escapeHtml(member.email)}</td>
                     <td>${escapeHtml(member.branch)}</td>
                     <td>
-                        <button class="btn-danger" onclick="deleteMember('${escapeHtml(String(member._docId))}')">Delete</button>
+                        <button class="btn-danger" onclick="deleteMember('${escapeHtml(member._docId)}')">Delete</button>
                     </td>
                 `;
                 tbody.appendChild(row);

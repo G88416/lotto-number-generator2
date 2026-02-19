@@ -54,7 +54,7 @@
                 <option value="Donation">Donation</option>
             </select></div>
             <div class="form-row"><label for="tithe-amount">Amount *</label>
-            <input type="number" id="tithe-amount" placeholder="Amount" required step="0.01" min="0"></div>
+            <input type="number" id="tithe-amount" placeholder="Amount" required step="0.01" min="0" inputmode="decimal"></div>
             <div class="form-row"><label for="tithe-date">Date *</label>
             <input type="date" id="tithe-date" required></div>
             <div class="form-row"><label for="tithe-branch">Branch</label>
@@ -113,8 +113,8 @@
             const sums = { Tithe: 0, Offering: 0, Donation: 0 };
             data.forEach(t => {
                 const amt = parseFloat(t.amount) || 0;
-                if (sums[t.type] !== undefined) sums[t.type] += amt;
-                else sums['Donation'] += amt;
+                const type = t.type && sums[t.type] !== undefined ? t.type : 'Donation';
+                sums[type] += amt;
             });
             const total = sums.Tithe + sums.Offering + sums.Donation;
             document.getElementById('sum-tithe').textContent    = 'R ' + sums.Tithe.toFixed(2);

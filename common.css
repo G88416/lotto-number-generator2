@@ -406,6 +406,14 @@ table button {
     color: #495057;
 }
 
+/* ── Prayer Status Dropdown ── */
+.status-dropdown {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #e1e8ed;
+    font-size: 13px;
+}
+
 /* ── Footer ── */
 footer {
     text-align: center;

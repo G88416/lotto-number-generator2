@@ -222,7 +222,7 @@
                     const keysToRemove = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const key = localStorage.key(i);
-                        if (key && (key.startsWith('charity_') || key === 'org_info' || key === 'theme')) {
+                        if (key && (key.startsWith('charity_') || key === 'org_info' || key === 'theme' || key === 'userSession')) {
                             keysToRemove.push(key);
                         }
                     }

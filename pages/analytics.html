@@ -168,7 +168,10 @@
                 document.getElementById('total-prayers').textContent = prayers.length;
                 // Status chart
                 const statuses = { Pending: 0, Praying: 0, Answered: 0 };
-                prayers.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; else statuses['Pending']++; });
+                prayers.forEach(p => {
+                    if (statuses[p.status] !== undefined) statuses[p.status]++;
+                    else statuses['Pending']++;
+                });
                 const maxVal = Math.max(...Object.values(statuses), 1);
                 const chartEl = document.getElementById('prayer-chart');
                 const statusColors = {

@@ -125,7 +125,7 @@
                     <td>${badge}</td>
                     <td>${escapeHtml(date)}</td>
                     <td>
-                        <select class="status-select" data-id="${escapeHtml(docId)}" style="padding:5px;border-radius:4px;border:1px solid #e1e8ed;">
+                        <select class="status-select status-dropdown" data-id="${escapeHtml(docId)}">
                             <option value="Pending" ${prayer.status==='Pending'?'selected':''}>Pending</option>
                             <option value="Praying" ${prayer.status==='Praying'?'selected':''}>Praying</option>
                             <option value="Answered" ${prayer.status==='Answered'?'selected':''}>Answered</option>
