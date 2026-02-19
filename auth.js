@@ -111,7 +111,12 @@ function filterNavigation() {
         if (!href) return;
         
         // Extract page name from href
-        const pageName = href.replace(/^(\.\.\/)?pages\//, '').replace('.html', '').replace('../index.html', 'dashboard').replace('index.html', 'dashboard');
+        let pageName = href.replace(/^(\.\.\/)?pages\//, '').replace('.html', '');
+        
+        // Handle index.html as dashboard
+        if (pageName === 'index' || pageName === '../index' || pageName === '') {
+            pageName = 'dashboard';
+        }
         
         // Dashboard is always accessible
         if (pageName === 'dashboard' || pageName === '') {
@@ -255,16 +260,17 @@ function initAuth() {
     }
     
     // Apply UI modifications
-    filterNavigation();
-    updateHeaderWithUser();
-    
-    // Wait for DOM to be fully loaded before applying edit permissions
+    // Wait for DOM to be fully loaded before applying UI modifications
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
+            filterNavigation();
+            updateHeaderWithUser();
             applyEditPermissions();
             protectDeleteButtons();
         });
     } else {
+        filterNavigation();
+        updateHeaderWithUser();
         applyEditPermissions();
         protectDeleteButtons();
     }
