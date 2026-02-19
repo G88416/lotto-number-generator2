@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="../firebase-config.js"></script>
+    <script src="../auth.js"></script>
     <style>
         #media-canvas {
             border: 2px solid #667eea;
@@ -140,12 +141,12 @@
             if (confirm('Are you sure you want to logout?')) {
                 if (auth) {
                     auth.signOut().then(() => {
-                        localStorage.clear();
-                        window.location.href = '../index.html';
+                        localStorage.removeItem('userSession');
+                        window.location.href = '../login.html';
                     });
                 } else {
-                    localStorage.clear();
-                    window.location.href = '../index.html';
+                    localStorage.removeItem('userSession');
+                    window.location.href = '../login.html';
                 }
             }
         });
