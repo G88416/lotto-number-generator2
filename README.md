@@ -96,13 +96,22 @@ To enable Firebase cloud synchronization:
    - Go to [Firebase Console](https://console.firebase.google.com/)
    - Click "Add Project" and follow the setup wizard
    - Enable Firestore Database in your project
+   - Enable **Authentication** → **Sign-in method** → **Email/Password**
 
-2. **Get Your Firebase Configuration**
+2. **Create Firebase Auth Users**
+   - In Authentication → Users, create accounts matching the app roles using the email convention `<username>@charityfaithmission.org`:
+     - `admin@charityfaithmission.org`
+     - `genesis@charityfaithmission.org`
+     - `branch@charityfaithmission.org`
+     - `pastor@charityfaithmission.org`
+   - Set strong, unique passwords for each account (avoid using the demo defaults in production).
+
+3. **Get Your Firebase Configuration**
    - In your Firebase project, go to Project Settings
    - Under "Your apps", create a Web app if you haven't already
    - Copy the Firebase configuration object
 
-3. **Update firebase-config.js**
+4. **Update firebase-config.js**
    - Open `firebase-config.js` in the root directory
    - Replace the placeholder values with your actual Firebase credentials:
    ```javascript
@@ -116,7 +125,7 @@ To enable Firebase cloud synchronization:
    };
    ```
 
-4. **Set Up Firestore Security Rules**
+5. **Set Up Firestore Security Rules**
    - In Firebase Console, go to Firestore Database > Rules
    - Update security rules as needed for your use case
 
@@ -172,12 +181,12 @@ To enable Firebase cloud synchronization:
 
 ## Security Notes
 
-- **Demo Credentials**: The current implementation uses hardcoded credentials for demonstration purposes only
-- **Production Use**: For production, implement proper authentication with Firebase Authentication or a backend service
+- **Demo Credentials**: The current implementation uses hardcoded credentials for demonstration purposes. For production, create real Firebase Authentication users (see Firebase Setup above) and remove or disable the demo credentials fallback.
+- **Firebase Authentication**: When Firebase is configured, the login page uses `signInWithEmailAndPassword` so that user credentials are validated by Firebase. Session tokens are managed by Firebase and synced with localStorage.
 - Update Firebase security rules to restrict access appropriately
 - Keep your Firebase configuration secure
 - Regular backups recommended
-- User sessions are stored in browser localStorage (consider more secure alternatives for production)
+- User sessions are stored in browser localStorage alongside Firebase auth state
 - Implement HTTPS for secure data transmission in production
 
 ## Support

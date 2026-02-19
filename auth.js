@@ -234,6 +234,22 @@ function initAuth() {
     if (window.location.pathname.includes('login.html')) {
         return; // Don't check auth on login page
     }
+
+    // When Firebase Authentication is configured, listen for auth state changes.
+    // This ensures sessions created via Firebase are invalidated if the Firebase
+    // user signs out (e.g., on another device or from the Firebase Console).
+    if (typeof auth !== 'undefined' && auth && firebaseInitialized) {
+        auth.onAuthStateChanged((user) => {
+            const session = JSON.parse(localStorage.getItem('userSession') || 'null');
+            if (!user && session && session.firebaseUid) {
+                // Firebase reports the user is signed out but localStorage still has a
+                // Firebase-backed session — clear it and redirect to login.
+                localStorage.removeItem('userSession');
+                const currentPage = window.location.pathname;
+                window.location.href = currentPage.includes('/pages/') ? '../login.html' : 'login.html';
+            }
+        });
+    }
     
     // Check authentication
     const userSession = checkAuth();
