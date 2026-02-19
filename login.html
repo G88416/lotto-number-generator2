@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Charity and Faith Mission</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .demo-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .demo-info h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+        
+        .demo-info p {
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+        
+        .demo-info strong {
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🏛️ Charity and Faith Mission</h1>
+            <p>Management System Login</p>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="role">Login As</label>
+                <select id="role" required>
+                    <option value="">Select your role</option>
+                    <option value="admin">Admin</option>
+                    <option value="genesis">Genesis Service</option>
+                    <option value="branch">Branch Co</option>
+                    <option value="pastor">Pastors Info</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+        
+        <div class="demo-info">
+            <h3>Demo Credentials:</h3>
+            <p><strong>Admin:</strong> admin / admin123</p>
+            <p><strong>Genesis Service:</strong> genesis / genesis123</p>
+            <p><strong>Branch Co:</strong> branch / branch123</p>
+            <p><strong>Pastors Info:</strong> pastor / pastor123</p>
+        </div>
+    </div>
+    
+    <script>
+        // Demo user credentials (in production, this would be handled by a backend)
+        const users = {
+            'admin': { password: 'admin123', role: 'admin', name: 'Admin User' },
+            'genesis': { password: 'genesis123', role: 'genesis', name: 'Genesis Service' },
+            'branch': { password: 'branch123', role: 'branch', name: 'Branch Co' },
+            'pastor': { password: 'pastor123', role: 'pastor', name: 'Pastors Info' }
+        };
+        
+        const form = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+        
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const selectedRole = document.getElementById('role').value;
+            
+            // Hide previous error
+            errorMessage.classList.remove('show');
+            
+            // Validate credentials
+            if (users[username] && users[username].password === password) {
+                // Check if selected role matches user's actual role
+                if (users[username].role === selectedRole) {
+                    // Store user session
+                    const userSession = {
+                        username: username,
+                        role: selectedRole,
+                        name: users[username].name,
+                        loginTime: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem('userSession', JSON.stringify(userSession));
+                    
+                    // Redirect to dashboard
+                    window.location.href = 'index.html';
+                } else {
+                    showError('Selected role does not match your credentials.');
+                }
+            } else {
+                showError('Invalid username or password.');
+            }
+        });
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+        
+        // Check if user is already logged in
+        window.addEventListener('load', () => {
+            const session = localStorage.getItem('userSession');
+            if (session) {
+                try {
+                    const userSession = JSON.parse(session);
+                    if (userSession.role) {
+                        window.location.href = 'index.html';
+                    }
+                } catch (e) {
+                    localStorage.removeItem('userSession');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
