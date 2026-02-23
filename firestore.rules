@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Require a valid Firebase Authentication session for every operation.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Retrieve the authenticated user's role from the userRoles collection.
+    // Returns '' when no role document has been created yet, keeping the app
+    // functional during initial Firebase setup.
+    function userRole() {
+      return exists(/databases/$(database)/documents/userRoles/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.get('role', '')
+        : '';
+    }
+
+    // Roles with write permission: admin, genesis, branch.
+    // An empty role (no userRoles document yet) is also allowed so the app
+    // remains functional before per-user roles are configured.
+    function canWrite() {
+      let role = userRole();
+      return role == '' || role == 'admin' || role == 'genesis' || role == 'branch';
+    }
+
+    // The userRoles collection maps Firebase UID → role string.
+    // Only admins may write role documents; users may only read their own.
+    match /userRoles/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if isAuthenticated()
+                   && exists(/databases/$(database)/documents/userRoles/$(request.auth.uid))
+                   && get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.get('role', '') == 'admin';
+    }
+
+    match /members/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /visitors/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /leaders/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /tithes/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /prayers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /sermons/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /events/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /attendance/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /volunteers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+  }
+}
