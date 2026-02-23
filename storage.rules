@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Require a valid Firebase Authentication session for every operation.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Media files (images, videos, audio, PDFs) — max 50 MB per file
+    match /media/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && request.resource.size <= 50 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*|application/pdf');
+    }
+
+    // Sermon recordings — max 500 MB per file
+    match /sermons/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && request.resource.size <= 500 * 1024 * 1024
+                   && request.resource.contentType.matches('video/.*|audio/.*');
+    }
+
+    // All other paths — authenticated read/write with content-type and size
+    // validation to prevent arbitrary file uploads outside designated paths.
+    match /{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+                   && request.resource.size <= 50 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*|application/pdf|text/plain');
+    }
+  }
+}
