@@ -1,0 +1,42 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Firebase Hosting (preview)
+        if: github.event_name == 'pull_request'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # projectId overrides the placeholder value in .firebaserc at deploy time.
+          # Set FIREBASE_PROJECT_ID in repository Settings → Variables → Actions.
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+
+      - name: Deploy to Firebase Hosting (live)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # projectId overrides the placeholder value in .firebaserc at deploy time.
+          # Set FIREBASE_PROJECT_ID in repository Settings → Variables → Actions.
+          projectId: ${{ vars.FIREBASE_PROJECT_ID }}
+          channelId: live

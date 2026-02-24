@@ -127,7 +127,18 @@ To enable Firebase cloud synchronization:
 
 5. **Set Up Firestore Security Rules**
    - In Firebase Console, go to Firestore Database > Rules
-   - Update security rules as needed for your use case
+   - The rules in `firestore.rules` and `storage.rules` are deployed automatically by the CI/CD workflow
+
+6. **Update `.firebaserc`**
+   - Open `.firebaserc` in the root directory
+   - Replace `YOUR_FIREBASE_PROJECT_ID` with your actual Firebase project ID:
+   ```json
+   {
+     "projects": {
+       "default": "your-project-id"
+     }
+   }
+   ```
 
 ## Installation & Usage
 
@@ -138,11 +149,42 @@ To enable Firebase cloud synchronization:
 4. The application works immediately with local storage
 5. Configure Firebase (optional) for cloud sync
 
-### Deployment
-- Deploy to any static web hosting service (Firebase Hosting, Netlify, GitHub Pages, etc.)
-- No server-side code required
-- All data is stored in Firebase or browser localStorage
-- Ensure `login.html` is set as the landing page or index page
+### Deployment to Firebase Hosting
+
+#### Automated CI/CD (Recommended)
+
+This repository includes a GitHub Actions workflow (`.github/workflows/firebase-deploy.yml`) that automatically deploys to Firebase Hosting:
+
+- **On push to `main`**: Deploys to the live Firebase Hosting channel
+- **On pull request**: Deploys a preview channel and posts the URL as a PR comment
+
+**Setup steps:**
+
+1. Generate a Firebase service account key:
+   - Go to Firebase Console → Project Settings → Service accounts
+   - Click "Generate new private key" and download the JSON file
+2. Add it as a GitHub Actions secret:
+   - In your GitHub repository, go to Settings → Secrets and variables → Actions
+   - Create a secret named `FIREBASE_SERVICE_ACCOUNT` with the JSON file contents
+3. Add the Firebase project ID as a repository variable:
+   - In the same Actions settings page, go to the "Variables" tab
+   - Create a variable named `FIREBASE_PROJECT_ID` with your Firebase project ID
+4. Push to `main` — the workflow will deploy automatically
+
+#### Manual Deployment
+
+If you prefer to deploy manually using the Firebase CLI:
+
+```bash
+# Install the Firebase CLI
+npm install -g firebase-tools
+
+# Log in to Firebase
+firebase login
+
+# Deploy hosting, Firestore rules, and Storage rules
+firebase deploy
+```
 
 ## Browser Compatibility
 - Modern browsers (Chrome, Firefox, Safari, Edge)
