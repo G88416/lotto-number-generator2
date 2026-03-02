@@ -407,15 +407,21 @@
                     const secondaryAuth = secondaryApp.auth();
                     const credential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
                     newUid = credential.user.uid;
+                    try {
+                        await credential.user.updateProfile({ displayName });
+                    } catch (profileErr) {
+                        console.warn('Could not set display name in Firebase Auth:', profileErr.message);
+                    }
                     await secondaryAuth.signOut();
                 } catch (authErr) {
                     if (authErr.code === 'auth/email-already-in-use') {
                         showToast('A Firebase Auth account already exists for this username.', 'error');
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Add User';
-                        return;
+                    } else {
+                        showToast('Failed to create Firebase Auth account: ' + authErr.message, 'error');
                     }
-                    console.warn('Firebase Auth account creation failed:', authErr.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Add User';
+                    return;
                 } finally {
                     if (secondaryApp) {
                         secondaryApp.delete().catch(() => {});
