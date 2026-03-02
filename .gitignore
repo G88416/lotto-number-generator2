@@ -1,0 +1,5 @@
+# Node.js dependencies
+node_modules/
+functions/node_modules/
+
+# npm/yarn lock files are intentionally included (package-lock.json)
