@@ -7,13 +7,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Retrieve the authenticated user's role from the userRoles collection.
-    // Returns '' when no role document has been created yet, keeping the app
+    // Retrieve the authenticated user's role from the userRoles collection,
+    // falling back to appUsers when no userRoles document exists.
+    // Returns '' when neither document has been created yet, keeping the app
     // functional during initial Firebase setup.
     function userRole() {
       return exists(/databases/$(database)/documents/userRoles/$(request.auth.uid))
         ? get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.get('role', '')
-        : '';
+        : exists(/databases/$(database)/documents/appUsers/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.get('role', '')
+          : '';
     }
 
     // Roles with write permission: admin, genesis, branch.
@@ -28,9 +31,7 @@ service cloud.firestore {
     // Only admins may write role documents; users may only read their own.
     match /userRoles/{uid} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow write: if isAuthenticated()
-                   && exists(/databases/$(database)/documents/userRoles/$(request.auth.uid))
-                   && get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.get('role', '') == 'admin';
+      allow write: if isAuthenticated() && userRole() == 'admin';
     }
 
     match /members/{docId} {
