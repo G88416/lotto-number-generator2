@@ -26,8 +26,8 @@ let firebaseInitialized = false;
 function initializeFirebase() {
     if (typeof firebase !== 'undefined' && !firebaseInitialized) {
         firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        auth = firebase.auth();
+        db = typeof firebase.firestore === 'function' ? firebase.firestore() : null;
+        auth = typeof firebase.auth === 'function' ? firebase.auth() : null;
         if (typeof firebase.analytics === 'function') {
             analytics = firebase.analytics();
         }

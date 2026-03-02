@@ -128,3 +128,21 @@ function filterTableRows(query, tbodySelector) {
         row.style.display = (!term || text.includes(term)) ? '' : 'none';
     });
 }
+
+/**
+ * Read locally-managed application users from localStorage.
+ * These are users created via Settings → User Management when Firebase is
+ * unavailable or the admin is authenticated through the demo fallback.
+ * NOTE: passwords are stored in plaintext for demo purposes only; this
+ * approach is consistent with the hardcoded DEMO_USERS in login.html but
+ * should not be used in a production environment.
+ * @returns {Array} Array of user objects
+ */
+function getLocalAppUsers() {
+    try {
+        return JSON.parse(localStorage.getItem('localAppUsers')) || [];
+    } catch (e) {
+        console.warn('Failed to parse localAppUsers from localStorage:', e.message);
+        return [];
+    }
+}
