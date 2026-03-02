@@ -46,6 +46,12 @@ function saveToFirebase(collection, data) {
         return db.collection(collection).add({
             ...data,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch((error) => {
+            console.warn('Firestore save failed, using localStorage fallback:', error.message);
+            const key = `charity_${collection}`;
+            const existing = JSON.parse(localStorage.getItem(key)) || [];
+            existing.push(data);
+            localStorage.setItem(key, JSON.stringify(existing));
         });
     } else {
         // Fallback to localStorage
@@ -69,6 +75,12 @@ function loadFromFirebase(collection, callback) {
                 return 0;
             });
             callback(data);
+        }, (error) => {
+            console.warn('Firestore load failed, using localStorage fallback:', error.message);
+            const key = `charity_${collection}`;
+            const data = JSON.parse(localStorage.getItem(key)) || [];
+            const dataWithIds = data.map((item, index) => ({ _docId: index, ...item }));
+            callback(dataWithIds);
         });
     } else {
         // Fallback to localStorage
@@ -83,7 +95,9 @@ function loadFromFirebase(collection, callback) {
 function deleteFromFirebase(collection, id) {
     if (db && id && typeof id === 'string' && !id.match(/^\d+$/)) {
         // Firebase document ID (not a numeric index)
-        return db.collection(collection).doc(id).delete();
+        return db.collection(collection).doc(id).delete().catch((error) => {
+            console.warn('Firestore delete failed:', error.message);
+        });
     } else {
         // Fallback to localStorage or numeric ID
         const key = `charity_${collection}`;
@@ -97,7 +111,9 @@ function deleteFromFirebase(collection, id) {
 
 function updateInFirebase(collection, id, updates) {
     if (db && id) {
-        return db.collection(collection).doc(id).update(updates);
+        return db.collection(collection).doc(id).update(updates).catch((error) => {
+            console.warn('Firestore update failed:', error.message);
+        });
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
