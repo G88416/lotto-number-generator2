@@ -84,6 +84,8 @@
                 <input type="text" id="new-user-displayname" placeholder="Display Name" required></div>
                 <div class="form-row"><label for="new-user-username">Username *</label>
                 <input type="text" id="new-user-username" placeholder="Username (used for login)" required></div>
+                <div class="form-row"><label for="new-user-email">Email *</label>
+                <input type="email" id="new-user-email" placeholder="Email address (e.g. name@example.com)" required></div>
                 <div class="form-row"><label for="new-user-role">Role *</label>
                 <select id="new-user-role" required>
                     <option value="">Select role</option>
@@ -284,6 +286,7 @@
         // ── User Management (admin only) ──────────────────────────────────────
         const FIREBASE_EMAIL_DOMAIN = 'charityfaithmission.org';
         const APP_USERS_COLLECTION = 'appUsers';
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         let allAppUsers = [];
 
         const currentUser = getCurrentUser();
@@ -402,6 +405,12 @@
             const displayName = document.getElementById('new-user-displayname').value.trim();
             const role = document.getElementById('new-user-role').value;
             const password = document.getElementById('new-user-password').value;
+            const email = document.getElementById('new-user-email').value.trim();
+
+            if (!email || !EMAIL_REGEX.test(email)) {
+                showToast('Please enter a valid email address (e.g. name@example.com)', 'error');
+                return;
+            }
 
             const duplicate = allAppUsers.find(u => u.username === username);
             if (duplicate) { showToast('Username already exists.', 'error'); return; }
@@ -410,7 +419,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Adding…';
 
-            const email = `${username}@${FIREBASE_EMAIL_DOMAIN}`;
+            const firebaseEmail = `${username}@${FIREBASE_EMAIL_DOMAIN}`;
             let newUid = null;
 
             // Create Firebase Auth account via a secondary app instance so the
@@ -422,7 +431,7 @@
                     secondaryApp = firebase.apps.find(a => a.name === secondaryAppName)
                         || firebase.initializeApp(firebaseConfig, secondaryAppName);
                     const secondaryAuth = secondaryApp.auth();
-                    const credential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+                    const credential = await secondaryAuth.createUserWithEmailAndPassword(firebaseEmail, password);
                     newUid = credential.user.uid;
                     try {
                         await credential.user.updateProfile({ displayName });
@@ -446,7 +455,7 @@
                 }
             }
 
-            const profileData = { username, displayName, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+            const profileData = { username, displayName, email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
             try {
                 if (newUid) {
                     await db.collection(APP_USERS_COLLECTION).doc(newUid).set(profileData);
