@@ -81,9 +81,18 @@ service cloud.firestore {
 
     // appUsers stores user profiles (username, displayName, role) linked by Firebase UID.
     // Any authenticated user may read their own profile; only admins may list or write.
+    // A user may also create their own profile document when none exists yet (bootstrap),
+    // allowing the first admin to seed their role before any Firestore documents are in place.
+    // The role written during self-create must be a known application role.
+    // Updates and deletes remain admin-only to prevent role self-escalation.
     match /appUsers/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || userRole() == 'admin');
-      allow write: if isAuthenticated() && userRole() == 'admin';
+      allow create: if isAuthenticated() && (
+        userRole() == 'admin' ||
+        (request.auth.uid == uid &&
+          request.resource.data.role in ['admin', 'genesis', 'branch', 'pastor'])
+      );
+      allow update, delete: if isAuthenticated() && userRole() == 'admin';
     }
   }
 }

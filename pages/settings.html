@@ -290,7 +290,29 @@
         if (currentUser && currentUser.role === 'admin') {
             document.getElementById('user-mgmt-heading').style.display = '';
             document.getElementById('user-mgmt-section').style.display = '';
-            loadAppUsers();
+            ensureCurrentUserProfile().then(() => loadAppUsers());
+        }
+
+        // Ensure the currently signed-in admin has a profile document in appUsers.
+        // Without this, userRole() returns '' in Firestore rules and subsequent writes
+        // to other users' profiles are rejected with "missing or insufficient permissions".
+        // currentUser is the session object from getCurrentUser() (localStorage).
+        async function ensureCurrentUserProfile() {
+            if (!db || !auth || !auth.currentUser) return;
+            const uid = auth.currentUser.uid;
+            try {
+                const doc = await db.collection(APP_USERS_COLLECTION).doc(uid).get();
+                if (!doc.exists) {
+                    await db.collection(APP_USERS_COLLECTION).doc(uid).set({
+                        username: currentUser.username || '',
+                        displayName: currentUser.name || '',
+                        role: currentUser.role,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not ensure admin profile:', e.message);
+            }
         }
 
         function loadAppUsers() {
