@@ -131,7 +131,7 @@ To enable Firebase cloud synchronization:
 
 6. **Update `.firebaserc`**
    - Open `.firebaserc` in the root directory
-   - Replace `YOUR_FIREBASE_PROJECT_ID` with your actual Firebase project ID:
+   - Replace `your-firebase-project-id` with your actual Firebase project ID:
    ```json
    {
      "projects": {
