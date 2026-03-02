@@ -1,17 +1,26 @@
-// Firebase Configuration
-// Replace these values with your actual Firebase project credentials
+// Import the functions you need from the SDKs you need
+// import { initializeApp } from "firebase/app";
+// import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDIPGXu6QAIgSTNxgqOyRabOfwJ_uG_JYU",
+    authDomain: "cms-charity.firebaseapp.com",
+    databaseURL: "https://cms-charity-default-rtdb.firebaseio.com",
+    projectId: "cms-charity",
+    storageBucket: "cms-charity.firebasestorage.app",
+    messagingSenderId: "117716657336",
+    appId: "1:117716657336:web:72082a130aac91d19fc04d",
+    measurementId: "G-LJELJJYW9R"
 };
 
 // Initialize Firebase (will be used in individual pages)
 let db = null;
 let auth = null;
+let analytics = null;
 let firebaseInitialized = false;
 
 function initializeFirebase() {
@@ -19,6 +28,9 @@ function initializeFirebase() {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
         auth = firebase.auth();
+        if (typeof firebase.analytics === 'function') {
+            analytics = firebase.analytics();
+        }
         firebaseInitialized = true;
         console.log('Firebase initialized successfully');
     } else if (firebaseInitialized) {
