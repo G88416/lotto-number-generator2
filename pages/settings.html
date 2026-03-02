@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="../firebase-config.js"></script>
     <script src="../auth.js"></script>
 </head>
@@ -512,6 +513,16 @@
                     } catch (err) {
                         console.warn('Failed to save user profile to Firestore:', err.message, '— user saved locally.');
                     }
+                    // Set Firebase custom claim so auth.js can resolve the role from
+                    // the ID token on the user's next login.
+                    if (functions) {
+                        try {
+                            const setUserRoleFn = functions.httpsCallable('setUserRole');
+                            await setUserRoleFn({ uid: newUid, role });
+                        } catch (fnErr) {
+                            console.warn('Could not set custom claim (will sync on next login):', fnErr.message);
+                        }
+                    }
                 }
             } else if (!db || !(auth && auth.currentUser)) {
                 // Firebase not available — refresh the local-only table.
@@ -553,6 +564,16 @@
             if (!isLocal && db) {
                 try {
                     await db.collection(APP_USERS_COLLECTION).doc(uid).update(updates);
+                    // Update the Firebase custom claim so the role change takes effect
+                    // on the user's next token refresh (within ~1 hour) or forced refresh.
+                    if (functions) {
+                        try {
+                            const setUserRoleFn = functions.httpsCallable('setUserRole');
+                            await setUserRoleFn({ uid, role: updates.role });
+                        } catch (fnErr) {
+                            console.warn('Could not update custom claim (will sync on next login):', fnErr.message);
+                        }
+                    }
                     document.getElementById('edit-user-modal').style.display = 'none';
                     showToast('User updated successfully!', 'success');
                 } catch (err) {

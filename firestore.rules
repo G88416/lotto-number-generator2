@@ -7,31 +7,40 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Retrieve the authenticated user's role from the userRoles collection,
-    // falling back to appUsers when no userRoles document exists.
-    // Returns '' when neither document has been created yet, keeping the app
-    // functional during initial Firebase setup.
+    // Retrieve the authenticated user's role.
+    // Primary source : Firebase ID token custom claim  token.role
+    //                  (set server-side by the setUserRole / syncUserClaim
+    //                   Cloud Functions — most secure, always up-to-date).
+    // Fallback source: Firestore appUsers profile
+    //                  (used during migration before custom claims are set).
     function userRole() {
-      return exists(/databases/$(database)/documents/userRoles/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.get('role', '')
-        : exists(/databases/$(database)/documents/appUsers/$(request.auth.uid))
-          ? get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.get('role', '')
-          : '';
+      let tokenRole = request.auth.token.get('role', '');
+      return tokenRole != ''
+        ? tokenRole
+        : (exists(/databases/$(database)/documents/appUsers/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.get('role', '')
+            : '');
+    }
+
+    // Returns true when the token carries the boolean admin claim OR the
+    // string role claim equals 'admin'.
+    function isAdmin() {
+      return request.auth.token.get('admin', false) == true || userRole() == 'admin';
     }
 
     // Roles with write permission: admin, genesis, branch.
-    // An empty role (no userRoles document yet) is also allowed so the app
+    // An empty role (no claim / profile yet) is also allowed so the app
     // remains functional before per-user roles are configured.
     function canWrite() {
       let role = userRole();
       return role == '' || role == 'admin' || role == 'genesis' || role == 'branch';
     }
 
-    // The userRoles collection maps Firebase UID → role string.
+    // The userRoles collection maps Firebase UID → role string (legacy).
     // Only admins may write role documents; users may only read their own.
     match /userRoles/{uid} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow write: if isAuthenticated() && userRole() == 'admin';
+      allow write: if isAuthenticated() && isAdmin();
     }
 
     match /members/{docId} {
@@ -82,17 +91,17 @@ service cloud.firestore {
     // appUsers stores user profiles (username, displayName, role) linked by Firebase UID.
     // Any authenticated user may read their own profile; only admins may list or write.
     // A user may also create their own profile document when none exists yet (bootstrap),
-    // allowing the first admin to seed their role before any Firestore documents are in place.
+    // allowing the first admin to seed their role before any custom claims are in place.
     // The role written during self-create must be a known application role.
     // Updates and deletes remain admin-only to prevent role self-escalation.
     match /appUsers/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || userRole() == 'admin');
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
       allow create: if isAuthenticated() && (
-        userRole() == 'admin' ||
+        isAdmin() ||
         (request.auth.uid == uid &&
           request.resource.data.role in ['admin', 'genesis', 'branch', 'pastor'])
       );
-      allow update, delete: if isAuthenticated() && userRole() == 'admin';
+      allow update, delete: if isAuthenticated() && isAdmin();
     }
   }
 }

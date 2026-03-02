@@ -21,6 +21,7 @@ const firebaseConfig = {
 let db = null;
 let auth = null;
 let analytics = null;
+let functions = null;
 let firebaseInitialized = false;
 
 function initializeFirebase() {
@@ -28,6 +29,8 @@ function initializeFirebase() {
         firebase.initializeApp(firebaseConfig);
         db = typeof firebase.firestore === 'function' ? firebase.firestore() : null;
         auth = typeof firebase.auth === 'function' ? firebase.auth() : null;
+        // Firebase Functions SDK is only loaded on pages that need it (login, settings).
+        functions = typeof firebase.functions === 'function' ? firebase.functions() : null;
         if (typeof firebase.analytics === 'function') {
             analytics = firebase.analytics();
         }

@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
     <script src="firebase-config.js"></script>
     <style>
         * {
@@ -207,7 +208,18 @@
                 return [];
             }
         }
-        
+
+        // Extract role from Firebase ID token custom claims.
+        // Supports { role: 'admin' } and boolean { admin: true } claim shapes.
+        function _claimRole(claims) {
+            const validRoles = ['admin', 'genesis', 'branch', 'pastor'];
+            if (claims.role && validRoles.includes(claims.role)) return claims.role;
+            for (const r of validRoles) {
+                if (claims[r] === true) return r;
+            }
+            return null;
+        }
+
         const form = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
 
@@ -236,8 +248,12 @@
                     const credential = await auth.signInWithEmailAndPassword(email, password);
                     const uid = credential.user.uid;
 
-                    // Look up the user's profile in Firestore to get their role.
-                    let displayName = username;
+                    // --- Step 1: Check Firebase custom claims (authoritative role source) ---
+                    const idTokenResult = await credential.user.getIdTokenResult();
+                    let claimRole = _claimRole(idTokenResult.claims);
+
+                    // --- Step 2: Firestore profile lookup ---
+                    let displayName = credential.user.displayName || username;
                     let firestoreRole = null;
                     let hasFirestoreProfile = false;
                     if (db) {
@@ -245,7 +261,7 @@
                             const doc = await db.collection(APP_USERS_COLLECTION).doc(uid).get();
                             if (doc.exists) {
                                 const data = doc.data();
-                                displayName = data.displayName || username;
+                                displayName = data.displayName || displayName;
                                 firestoreRole = data.role || null;
                                 hasFirestoreProfile = true;
                             }
@@ -254,22 +270,35 @@
                         }
                     }
 
+                    // --- Step 3: Sync custom claim from Firestore profile (migration path) ---
+                    // If no custom claim is set yet but a Firestore profile exists,
+                    // call syncUserClaim to bootstrap the token claim for this user.
+                    if (!claimRole && hasFirestoreProfile && firestoreRole && functions) {
+                        try {
+                            const syncFn = functions.httpsCallable('syncUserClaim');
+                            const result = await syncFn();
+                            claimRole = result.data.role;
+                            // Force-refresh the token so subsequent getIdTokenResult() calls
+                            // include the newly-set claim.
+                            await credential.user.getIdToken(/* forceRefresh= */ true);
+                        } catch (syncErr) {
+                            console.warn('Could not sync user claim:', syncErr.message);
+                        }
+                    }
+
                     // If no Firestore profile found, check localStorage profile as fallback.
                     if (!hasFirestoreProfile) {
                         const localUser = getLocalUsers().find(u => u.username === username);
                         if (localUser) {
-                            displayName = localUser.displayName || username;
+                            displayName = localUser.displayName || displayName;
                             firestoreRole = localUser.role || null;
                             hasFirestoreProfile = true;
                         }
                     }
 
-                    // If a Firestore profile exists, the stored role is authoritative.
-                    // If no profile is found but Firebase Auth succeeded, auto-create
-                    // the profile so the user appears in admin user management and can
-                    // log in without needing a separate setup step.  The Firestore
-                    // security rules already permit a user to create their own profile
-                    // document with any valid role (bootstrap behaviour).
+                    // Auto-create Firestore profile on first login when none exists.
+                    // The Firestore security rules permit a user to create their own
+                    // profile with any valid role (bootstrap behaviour).
                     if (!hasFirestoreProfile && db) {
                         try {
                             await db.collection(APP_USERS_COLLECTION).doc(uid).set({
@@ -292,17 +321,21 @@
                         return;
                     }
 
-                    if (firestoreRole && firestoreRole !== selectedRole) {
+                    // Determine the authoritative effective role:
+                    //   custom claim > Firestore profile > selectedRole (fallback for new accounts)
+                    const effectiveRole = claimRole || firestoreRole || selectedRole;
+
+                    // Validate the user-selected role against the effective role.
+                    if (effectiveRole !== selectedRole) {
                         await auth.signOut();
                         showError('Selected role does not match your account.');
                         loginBtn.disabled = false;
                         return;
                     }
 
-                    // Use the Firestore role when available; fall back to selectedRole only
-                    // for demo accounts that have a matching Firebase Auth entry.
-                    const effectiveRole = firestoreRole || selectedRole;
-
+                    // Store display info in localStorage.
+                    // NOTE: the role here is a display cache only.
+                    // auth.js reads the authoritative role from the Firebase ID token.
                     localStorage.setItem('userSession', JSON.stringify({
                         username,
                         role: effectiveRole,
@@ -379,18 +412,31 @@
                 const loginBtn = form.querySelector('.login-btn');
                 loginBtn.disabled = true;
 
-                // Use Firebase auth state as the source of truth when available
-                auth.onAuthStateChanged((user) => {
+                // Use Firebase auth state as the source of truth when available.
+                // If a user is already signed in AND their token contains a valid
+                // role claim, redirect immediately — no need to log in again.
+                auth.onAuthStateChanged(async (user) => {
                     loginBtn.disabled = false;
-                    const session = localStorage.getItem('userSession');
-                    if (user && session) {
+                    if (user) {
                         try {
-                            const userSession = JSON.parse(session);
-                            if (userSession.role) {
+                            const idTokenResult = await user.getIdTokenResult();
+                            const role = _claimRole(idTokenResult.claims);
+                            if (role) {
                                 window.location.href = 'index.html';
+                                return;
                             }
-                        } catch (e) {
-                            localStorage.removeItem('userSession');
+                        } catch (_) { /* ignore */ }
+                        // No valid claim — check localStorage session as fallback
+                        const session = localStorage.getItem('userSession');
+                        if (session) {
+                            try {
+                                const userSession = JSON.parse(session);
+                                if (userSession.role) {
+                                    window.location.href = 'index.html';
+                                }
+                            } catch (e) {
+                                localStorage.removeItem('userSession');
+                            }
                         }
                     }
                 });

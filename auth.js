@@ -1,4 +1,7 @@
 // Authentication and Authorization Helper
+// Roles are resolved from Firebase ID token custom claims (authoritative).
+// Firestore appUsers and localStorage session are used as fallbacks for
+// migration compatibility and demo / offline mode.
 
 // Role permissions configuration
 const ROLE_PERMISSIONS = {
@@ -28,267 +31,337 @@ const ROLE_PERMISSIONS = {
     }
 };
 
-// Check if user is authenticated
-function checkAuth() {
-    const session = localStorage.getItem('userSession');
-    const currentPage = window.location.pathname;
-    
-    if (!session) {
-        // Not logged in, redirect to login page
-        if (!currentPage.includes('login.html')) {
-            window.location.href = currentPage.includes('/pages/') ? '../login.html' : 'login.html';
+/** Valid application roles – used for claim validation. */
+const VALID_ROLES = ['admin', 'genesis', 'branch', 'pastor'];
+
+// Module-level cache populated once Firebase auth resolves.
+// Role is read from Firebase ID token custom claims (authoritative source).
+let _currentUserData = null;
+
+// -- Role resolution helpers --------------------------------------------------
+
+/**
+ * Read the user's role from Firebase ID token custom claims.
+ * Supports { role: 'admin' } and boolean { admin: true } claim shapes.
+ * Returns the role string, or null if no valid claim is present.
+ */
+async function _getRoleFromToken(firebaseUser) {
+    try {
+        const result = await firebaseUser.getIdTokenResult();
+        const c = result.claims;
+        // String claim: token.role == 'admin'
+        if (c.role && ROLE_PERMISSIONS[c.role]) return c.role;
+        // Boolean claims: token.admin == true
+        for (const r of VALID_ROLES) {
+            if (c[r] === true) return r;
         }
-        return null;
-    }
-    
-    try {
-        const userSession = JSON.parse(session);
-        return userSession;
     } catch (e) {
-        // Invalid session, clear and redirect
-        localStorage.removeItem('userSession');
-        window.location.href = currentPage.includes('/pages/') ? '../login.html' : 'login.html';
-        return null;
+        console.warn('[auth] Could not read ID token claims:', e.message);
     }
+    return null;
 }
 
-// Check if user has access to a specific page
-function checkPageAccess(pageName) {
-    const userSession = checkAuth();
-    if (!userSession) return false;
-    
-    const permissions = ROLE_PERMISSIONS[userSession.role];
-    if (!permissions) return false;
-    
-    return permissions.pages.includes(pageName);
+/**
+ * Read the user's role from the Firestore appUsers profile.
+ * Used as a fallback during migration (before custom claims are set).
+ * Returns the role string, or null if not found / Firestore unavailable.
+ */
+async function _getRoleFromFirestore(uid) {
+    if (typeof db === 'undefined' || !db) return null;
+    try {
+        const doc = await db.collection('appUsers').doc(uid).get();
+        if (doc.exists) {
+            const r = doc.data().role;
+            if (r && ROLE_PERMISSIONS[r]) return r;
+        }
+    } catch (e) {
+        console.warn('[auth] Could not read Firestore profile:', e.message);
+    }
+    return null;
 }
 
-// Check if user can edit
-function canEdit() {
-    const userSession = checkAuth();
-    if (!userSession) return false;
-    
-    const permissions = ROLE_PERMISSIONS[userSession.role];
-    return permissions ? permissions.canEdit : false;
-}
+// -- Public API ---------------------------------------------------------------
 
-// Check if user can delete
-function canDelete() {
-    const userSession = checkAuth();
-    if (!userSession) return false;
-    
-    const permissions = ROLE_PERMISSIONS[userSession.role];
-    return permissions ? permissions.canDelete : false;
-}
-
-// Get current user info
+/**
+ * Get the currently authenticated user data.
+ * Prefers the Firebase-resolved cache (_currentUserData); falls back to the
+ * localStorage session for demo / offline mode.
+ */
 function getCurrentUser() {
-    const session = localStorage.getItem('userSession');
-    if (!session) return null;
-    
+    if (_currentUserData) return _currentUserData;
+    // Fallback: localStorage session (demo or offline)
     try {
-        return JSON.parse(session);
-    } catch (e) {
-        return null;
-    }
+        const raw = localStorage.getItem('userSession');
+        if (raw) {
+            const s = JSON.parse(raw);
+            if (s && s.role && ROLE_PERMISSIONS[s.role]) return s;
+        }
+    } catch (_) { /* ignore */ }
+    return null;
 }
 
-// Filter navigation based on user role
+/**
+ * Synchronous auth check. Returns current user data or null.
+ * When Firebase auth is being resolved asynchronously this may return null
+ * briefly; access control is enforced inside the async onAuthStateChanged
+ * callback in initAuth().
+ */
+function checkAuth() {
+    return getCurrentUser();
+}
+
+/** Returns true if the current user can access the given page. */
+function checkPageAccess(pageName) {
+    const user = getCurrentUser();
+    if (!user) return false;
+    const perms = ROLE_PERMISSIONS[user.role];
+    return perms ? perms.pages.includes(pageName) : false;
+}
+
+/** Returns true if the current user has edit permission. */
+function canEdit() {
+    const user = getCurrentUser();
+    if (!user) return false;
+    const perms = ROLE_PERMISSIONS[user.role];
+    return perms ? perms.canEdit : false;
+}
+
+/** Returns true if the current user has delete permission. */
+function canDelete() {
+    const user = getCurrentUser();
+    if (!user) return false;
+    const perms = ROLE_PERMISSIONS[user.role];
+    return perms ? perms.canDelete : false;
+}
+
+// -- UI helpers ---------------------------------------------------------------
+
+/** Hide nav links the current user cannot access. */
 function filterNavigation() {
-    const userSession = getCurrentUser();
-    if (!userSession) return;
-    
-    const permissions = ROLE_PERMISSIONS[userSession.role];
-    if (!permissions) return;
-    
-    const navLinks = document.querySelectorAll('nav ul li');
-    
-    navLinks.forEach(li => {
+    const user = getCurrentUser();
+    if (!user) return;
+    const perms = ROLE_PERMISSIONS[user.role];
+    if (!perms) return;
+    document.querySelectorAll('nav ul li').forEach(li => {
         const link = li.querySelector('a');
         if (!link) return;
-        
         const href = link.getAttribute('href');
         if (!href) return;
-        
-        // Extract page name from href
         let pageName = href.replace(/^(\.\.\/)?pages\//, '').replace('.html', '');
-        
-        // Handle index.html as dashboard
-        if (pageName === 'index' || pageName === '../index' || pageName === '') {
-            pageName = 'dashboard';
-        }
-        
-        // Dashboard is always accessible
-        if (pageName === 'dashboard' || pageName === '') {
-            return;
-        }
-        
-        // Check if user has access to this page
-        if (!permissions.pages.includes(pageName)) {
-            li.style.display = 'none';
-        }
+        if (pageName === 'index' || pageName === '../index' || pageName === '') pageName = 'dashboard';
+        if (pageName === 'dashboard' || pageName === '') return;
+        if (!perms.pages.includes(pageName)) li.style.display = 'none';
     });
 }
 
-// Disable edit/delete buttons based on permissions
+/** Disable form inputs / submit buttons when the user cannot edit. */
 function applyEditPermissions() {
-    const editAllowed = canEdit();
-    const deleteAllowed = canDelete();
-    
-    if (!editAllowed || !deleteAllowed) {
-        // Disable submit buttons on forms if editing not allowed
-        if (!editAllowed) {
-            const forms = document.querySelectorAll('form');
-            forms.forEach(form => {
-                const submitBtn = form.querySelector('button[type="submit"]');
-                if (submitBtn && !submitBtn.id.includes('export') && !submitBtn.id.includes('import')) {
-                    submitBtn.disabled = true;
-                    submitBtn.style.opacity = '0.5';
-                    submitBtn.style.cursor = 'not-allowed';
-                    submitBtn.title = 'You do not have permission to add/edit items';
-                }
-            });
-            
-            // Disable input fields
-            const inputs = document.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-                if (!input.id.includes('search') && !input.id.includes('filter')) {
-                    input.disabled = true;
-                    input.style.opacity = '0.7';
-                }
-            });
-        }
+    if (!canEdit()) {
+        document.querySelectorAll('form').forEach(form => {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn && !submitBtn.id.includes('export') && !submitBtn.id.includes('import')) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+                submitBtn.title = 'You do not have permission to add/edit items';
+            }
+        });
+        document.querySelectorAll('input, select, textarea').forEach(input => {
+            if (!input.id.includes('search') && !input.id.includes('filter')) {
+                input.disabled = true;
+                input.style.opacity = '0.7';
+            }
+        });
     }
 }
 
-// Protect delete buttons
+/** Observe DOM mutations and disable delete buttons when the user cannot delete. */
 function protectDeleteButtons() {
-    const deleteAllowed = canDelete();
-    
-    if (!deleteAllowed) {
-        // Use mutation observer to watch for dynamically added delete buttons
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === 1) { // Element node
-                        // Check for delete buttons
-                        const deleteButtons = node.querySelectorAll ? 
-                            node.querySelectorAll('button') : 
-                            (node.tagName === 'BUTTON' ? [node] : []);
-                        
-                        deleteButtons.forEach(btn => {
-                            if (btn.textContent.includes('Delete') || btn.textContent.includes('🗑️') || btn.onclick && btn.onclick.toString().includes('delete')) {
-                                btn.disabled = true;
-                                btn.style.opacity = '0.5';
-                                btn.style.cursor = 'not-allowed';
-                                btn.title = 'You do not have permission to delete items';
-                                btn.onclick = null;
-                            }
-                        });
+    if (!canDelete()) {
+        const disableBtn = btn => {
+            if (btn.textContent.includes('Delete') || btn.textContent.includes('🗑️') ||
+                (btn.onclick && btn.onclick.toString().includes('delete'))) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'You do not have permission to delete items';
+                btn.onclick = null;
+            }
+        };
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) {
+                        const btns = node.querySelectorAll
+                            ? node.querySelectorAll('button')
+                            : (node.tagName === 'BUTTON' ? [node] : []);
+                        btns.forEach(disableBtn);
                     }
                 });
             });
         });
-        
         observer.observe(document.body, { childList: true, subtree: true });
-        
-        // Also check existing buttons
-        setTimeout(() => {
-            const allButtons = document.querySelectorAll('button');
-            allButtons.forEach(btn => {
-                if (btn.textContent.includes('Delete') || btn.textContent.includes('🗑️')) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
-                    btn.title = 'You do not have permission to delete items';
-                    btn.onclick = null;
-                }
-            });
-        }, 500);
+        setTimeout(() => document.querySelectorAll('button').forEach(disableBtn), 500);
     }
 }
 
-// Update header to show current user
+/** Show the logged-in user's name and role in the page header. */
 function updateHeaderWithUser() {
-    const userSession = getCurrentUser();
-    if (!userSession) return;
-    
+    const user = getCurrentUser();
+    if (!user) return;
     const header = document.querySelector('header div');
-    if (header) {
-        const existingUserInfo = header.querySelector('.user-info');
-        if (!existingUserInfo) {
-            const userInfo = document.createElement('p');
-            userInfo.className = 'user-info';
-            userInfo.style.fontSize = '13px';
-            userInfo.style.opacity = '0.85';
-            userInfo.style.marginTop = '5px';
-            userInfo.textContent = `Logged in as: ${userSession.name} (${ROLE_PERMISSIONS[userSession.role].name})`;
-            header.appendChild(userInfo);
-        }
+    if (header && !header.querySelector('.user-info')) {
+        const userInfo = document.createElement('p');
+        userInfo.className = 'user-info';
+        userInfo.style.cssText = 'font-size:13px;opacity:0.85;margin-top:5px;';
+        const roleName = ROLE_PERMISSIONS[user.role] ? ROLE_PERMISSIONS[user.role].name : user.role;
+        userInfo.textContent = `Logged in as: ${user.name} (${roleName})`;
+        header.appendChild(userInfo);
     }
 }
 
-// Initialize authentication on page load
-function initAuth() {
-    // Check if we're on the login page
-    if (window.location.pathname.includes('login.html')) {
-        return; // Don't check auth on login page
-    }
+/** Apply all UI modifications after auth resolves. */
+function _applyAuthUI() {
+    filterNavigation();
+    updateHeaderWithUser();
+    applyEditPermissions();
+    protectDeleteButtons();
+}
 
-    // When Firebase Authentication is configured, listen for auth state changes.
-    // This ensures sessions created via Firebase are invalidated if the Firebase
-    // user signs out (e.g., on another device or from the Firebase Console).
+/** Redirect to the login page. */
+function _redirectToLogin() {
+    const p = window.location.pathname;
+    window.location.href = p.includes('/pages/') ? '../login.html' : 'login.html';
+}
+
+// -- Main init ----------------------------------------------------------------
+
+/**
+ * initAuth – called once when auth.js loads.
+ *
+ * When Firebase is available:
+ *   1. Waits for onAuthStateChanged.
+ *   2. Reads the user's role from Firebase ID token custom claims (authoritative).
+ *   3. Falls back to Firestore appUsers profile (migration / transition).
+ *   4. Falls back to localStorage session (demo / offline mode).
+ *   5. Caches result in _currentUserData.
+ *   6. Enforces page-level access control and applies UI modifications.
+ *
+ * When Firebase is not available (demo / offline):
+ *   Uses the localStorage session directly.
+ */
+function initAuth() {
+    if (window.location.pathname.includes('login.html')) return;
+
     if (typeof auth !== 'undefined' && auth && firebaseInitialized) {
-        auth.onAuthStateChanged((user) => {
-            const session = JSON.parse(localStorage.getItem('userSession') || 'null');
-            if (!user && session && session.firebaseUid) {
-                // Firebase reports the user is signed out but localStorage still has a
-                // Firebase-backed session — clear it and redirect to login.
-                localStorage.removeItem('userSession');
-                const currentPage = window.location.pathname;
-                window.location.href = currentPage.includes('/pages/') ? '../login.html' : 'login.html';
+        auth.onAuthStateChanged(async (firebaseUser) => {
+            if (!firebaseUser) {
+                _currentUserData = null;
+                _redirectToLogin();
+                return;
+            }
+
+            // 1. Firebase custom claims – authoritative role source
+            let role = await _getRoleFromToken(firebaseUser);
+
+            // 2. Firestore appUsers profile – transition fallback
+            if (!role) role = await _getRoleFromFirestore(firebaseUser.uid);
+
+            // 3. localStorage session – demo / offline fallback
+            if (!role) {
+                try {
+                    const s = JSON.parse(localStorage.getItem('userSession') || 'null');
+                    if (s && s.role && ROLE_PERMISSIONS[s.role]) role = s.role;
+                } catch (_) { /* ignore */ }
+            }
+
+            if (!role) {
+                alert('Your account role is not configured. Contact an administrator.');
+                auth.signOut();
+                _redirectToLogin();
+                return;
+            }
+
+            // Build display fields from Firebase profile + cached session
+            let name = firebaseUser.displayName || '';
+            let username = '';
+            try {
+                const s = JSON.parse(localStorage.getItem('userSession') || 'null');
+                if (s) {
+                    if (!name) name = s.name || '';
+                    username = s.username || '';
+                }
+            } catch (_) { /* ignore */ }
+            if (!username && firebaseUser.email) username = firebaseUser.email.split('@')[0];
+
+            _currentUserData = {
+                uid: firebaseUser.uid,
+                firebaseUid: firebaseUser.uid,
+                username,
+                name,
+                role
+            };
+
+            // Enforce page-level access
+            const path = window.location.pathname;
+            let pageName = '';
+            if (path.includes('/pages/')) {
+                pageName = path.split('/pages/')[1].replace('.html', '');
+            } else if (path.includes('index.html') || path.endsWith('/')) {
+                pageName = 'dashboard';
+            }
+            if (pageName && pageName !== 'dashboard') {
+                const perms = ROLE_PERMISSIONS[role];
+                if (!perms || !perms.pages.includes(pageName)) {
+                    alert('You do not have permission to access this page.');
+                    window.location.href = path.includes('/pages/') ? '../index.html' : 'index.html';
+                    return;
+                }
+            }
+
+            // Apply UI modifications
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', _applyAuthUI);
+            } else {
+                _applyAuthUI();
             }
         });
+        return;
     }
-    
-    // Check authentication
-    const userSession = checkAuth();
-    if (!userSession) return;
-    
-    // Get current page name
-    const currentPath = window.location.pathname;
-    let pageName = '';
-    
-    if (currentPath.includes('/pages/')) {
-        pageName = currentPath.split('/pages/')[1].replace('.html', '');
-    } else if (currentPath.includes('index.html') || currentPath.endsWith('/')) {
-        pageName = 'dashboard';
-    }
-    
-    // Check if user has access to current page
-    if (pageName && pageName !== 'dashboard') {
-        const hasAccess = checkPageAccess(pageName);
-        if (!hasAccess) {
-            alert('You do not have permission to access this page.');
-            window.location.href = currentPath.includes('/pages/') ? '../index.html' : 'index.html';
+
+    // Demo / offline mode – synchronous localStorage check
+    try {
+        const raw = localStorage.getItem('userSession');
+        if (!raw) { _redirectToLogin(); return; }
+        const userSession = JSON.parse(raw);
+        if (!userSession || !userSession.role || !ROLE_PERMISSIONS[userSession.role]) {
+            localStorage.removeItem('userSession');
+            _redirectToLogin();
             return;
         }
-    }
-    
-    // Apply UI modifications
-    // Wait for DOM to be fully loaded before applying UI modifications
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            filterNavigation();
-            updateHeaderWithUser();
-            applyEditPermissions();
-            protectDeleteButtons();
-        });
-    } else {
-        filterNavigation();
-        updateHeaderWithUser();
-        applyEditPermissions();
-        protectDeleteButtons();
+        _currentUserData = userSession;
+
+        const path = window.location.pathname;
+        let pageName = '';
+        if (path.includes('/pages/')) {
+            pageName = path.split('/pages/')[1].replace('.html', '');
+        } else if (path.includes('index.html') || path.endsWith('/')) {
+            pageName = 'dashboard';
+        }
+        if (pageName && pageName !== 'dashboard' && !checkPageAccess(pageName)) {
+            alert('You do not have permission to access this page.');
+            window.location.href = path.includes('/pages/') ? '../index.html' : 'index.html';
+            return;
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _applyAuthUI);
+        } else {
+            _applyAuthUI();
+        }
+    } catch (e) {
+        localStorage.removeItem('userSession');
+        _redirectToLogin();
     }
 }
 
