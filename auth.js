@@ -256,6 +256,37 @@ function initAuth() {
     if (typeof auth !== 'undefined' && auth && firebaseInitialized) {
         auth.onAuthStateChanged(async (firebaseUser) => {
             if (!firebaseUser) {
+                // No Firebase session. Fall back to localStorage for demo / offline
+                // users who have no Firebase Auth account (no firebaseUid stored).
+                // Firebase-authenticated users (firebaseUid present) must have an
+                // active Firebase session; if it is gone they are signed out.
+                try {
+                    const raw = localStorage.getItem('userSession');
+                    if (raw) {
+                        const s = JSON.parse(raw);
+                        if (s && s.role && ROLE_PERMISSIONS[s.role] && !s.firebaseUid) {
+                            _currentUserData = s;
+                            const path = window.location.pathname;
+                            let pageName = '';
+                            if (path.includes('/pages/')) {
+                                pageName = path.split('/pages/')[1].replace('.html', '');
+                            } else if (path.includes('index.html') || path.endsWith('/')) {
+                                pageName = 'dashboard';
+                            }
+                            if (pageName && pageName !== 'dashboard' && !checkPageAccess(pageName)) {
+                                alert('You do not have permission to access this page.');
+                                window.location.href = path.includes('/pages/') ? '../index.html' : 'index.html';
+                                return;
+                            }
+                            if (document.readyState === 'loading') {
+                                document.addEventListener('DOMContentLoaded', _applyAuthUI);
+                            } else {
+                                _applyAuthUI();
+                            }
+                            return;
+                        }
+                    }
+                } catch (_) { /* ignore */ }
                 _currentUserData = null;
                 _redirectToLogin();
                 return;
