@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="common.css">
     <script src="common.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="auth.js"></script>
     <style>
@@ -186,17 +186,14 @@
     </footer>
 
     <script>
-        // Initialize Firebase when page loads
-        window.addEventListener('load', () => {
-            initializeFirebase();
-            setupLogout();
+        initializeFirebase();
+        setupLogout();
 
-            // Load dashboard stats
-            loadFromFirebase('members', (d) => { document.getElementById('stat-members').textContent = d.length; });
-            loadFromFirebase('visitors', (d) => { document.getElementById('stat-visitors').textContent = d.length; });
-            loadFromFirebase('events',   (d) => { document.getElementById('stat-events').textContent = d.length; });
-            loadFromFirebase('tithes',   (d) => { document.getElementById('stat-tithes').textContent = d.length; });
-        });
+        // Load dashboard stats
+        loadFromFirebase('members', (d) => { document.getElementById('stat-members').textContent = d.length; });
+        loadFromFirebase('visitors', (d) => { document.getElementById('stat-visitors').textContent = d.length; });
+        loadFromFirebase('events',   (d) => { document.getElementById('stat-events').textContent = d.length; });
+        loadFromFirebase('tithes',   (d) => { document.getElementById('stat-tithes').textContent = d.length; });
 
         // Refresh dashboard stats when another tab updates localStorage (localStorage fallback mode)
         const statMap = {
