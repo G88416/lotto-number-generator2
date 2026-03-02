@@ -286,8 +286,29 @@
         // ── User Management (admin only) ──────────────────────────────────────
         const FIREBASE_EMAIL_DOMAIN = 'charityfaithmission.org';
         const APP_USERS_COLLECTION = 'appUsers';
+        const LOCAL_USERS_KEY = 'localAppUsers';
         const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         let allAppUsers = [];
+
+        // ── localStorage helpers ──────────────────────────────────────────────
+        // getLocalAppUsers() is defined in common.js; alias for convenience.
+        function getLocalUsers() { return getLocalAppUsers(); }
+        function saveLocalUsers(users) {
+            localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+        }
+        function upsertLocalUser(userData) {
+            const users = getLocalUsers();
+            const idx = users.findIndex(u => u.username === userData.username);
+            if (idx >= 0) {
+                users[idx] = { ...users[idx], ...userData };
+            } else {
+                users.push(userData);
+            }
+            saveLocalUsers(users);
+        }
+        function deleteLocalUser(username) {
+            saveLocalUsers(getLocalUsers().filter(u => u.username !== username));
+        }
 
         const currentUser = getCurrentUser();
         if (currentUser && currentUser.role === 'admin') {
@@ -309,7 +330,7 @@
                     ensureCurrentUserProfile().then(() => loadAppUsers());
                 });
             } else {
-                ensureCurrentUserProfile().then(() => loadAppUsers());
+                loadAppUsers();
             }
         }
 
@@ -335,17 +356,34 @@
             }
         }
 
+        // Merge Firebase users and localStorage users, preferring Firebase records.
+        function mergeUsers(firebaseUsers, localUsers) {
+            const merged = [...firebaseUsers];
+            const firebaseUsernames = new Set(firebaseUsers.map(u => u.username));
+            localUsers.forEach(lu => {
+                if (!firebaseUsernames.has(lu.username)) {
+                    merged.push({ _uid: 'local_' + lu.username, _isLocal: true, ...lu });
+                }
+            });
+            return merged;
+        }
+
         function loadAppUsers() {
-            if (!db) {
-                renderUsersTable([]);
+            const localUsers = getLocalUsers();
+            if (!db || (auth && !auth.currentUser)) {
+                // Firebase not available or admin not authenticated — use localStorage only.
+                allAppUsers = mergeUsers([], localUsers);
+                renderUsersTable(allAppUsers);
                 return;
             }
             db.collection(APP_USERS_COLLECTION).onSnapshot((snapshot) => {
-                allAppUsers = snapshot.docs.map(doc => ({ _uid: doc.id, ...doc.data() }));
+                const firebaseUsers = snapshot.docs.map(doc => ({ _uid: doc.id, ...doc.data() }));
+                allAppUsers = mergeUsers(firebaseUsers, getLocalUsers());
                 renderUsersTable(allAppUsers);
             }, (err) => {
-                console.warn('Failed to load users:', err.message);
-                renderUsersTable([]);
+                console.warn('Failed to load users from Firebase:', err.message);
+                allAppUsers = mergeUsers([], getLocalUsers());
+                renderUsersTable(allAppUsers);
             });
         }
 
@@ -389,18 +427,28 @@
             } else if (deleteBtn) {
                 const uid = deleteBtn.dataset.uid;
                 const username = deleteBtn.dataset.username;
-                if (!confirm(`Delete user "${username}"? Their Firebase Authentication account will remain active until removed in the Firebase Console.`)) return;
-                db.collection(APP_USERS_COLLECTION).doc(uid).delete().then(() => {
-                    showToast('User profile deleted.', 'success');
-                }).catch(err => {
-                    showToast('Failed to delete user: ' + err.message, 'error');
-                });
+                const isLocal = uid.startsWith('local_');
+                const confirmMsg = isLocal
+                    ? `Delete user "${username}"?`
+                    : `Delete user "${username}"? Their Firebase Authentication account will remain active until removed in the Firebase Console.`;
+                if (!confirm(confirmMsg)) return;
+                deleteLocalUser(username);
+                if (!isLocal && db) {
+                    db.collection(APP_USERS_COLLECTION).doc(uid).delete().then(() => {
+                        showToast('User deleted.', 'success');
+                    }).catch(err => {
+                        showToast('Failed to delete user from Firebase: ' + err.message, 'error');
+                    });
+                } else {
+                    allAppUsers = allAppUsers.filter(u => u._uid !== uid);
+                    renderUsersTable(allAppUsers);
+                    showToast('User deleted.', 'success');
+                }
             }
         });
 
         document.getElementById('add-user-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!db) { showToast('Firebase not connected. Cannot add users.', 'error'); return; }
             const username = document.getElementById('new-user-username').value.trim().toLowerCase();
             const displayName = document.getElementById('new-user-displayname').value.trim();
             const role = document.getElementById('new-user-role').value;
@@ -419,12 +467,15 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Adding…';
 
+            // Always persist to localStorage so the user can log in even when
+            // Firebase Firestore is unavailable or the admin is using demo credentials.
+            upsertLocalUser({ username, displayName, role, password });
+
             const firebaseEmail = `${username}@${FIREBASE_EMAIL_DOMAIN}`;
             let newUid = null;
 
-            // Create Firebase Auth account via a secondary app instance so the
-            // current admin session is not affected.
-            if (typeof firebase !== 'undefined' && firebaseInitialized) {
+            // Create Firebase Auth + Firestore profile when Firebase is available.
+            if (db && auth && auth.currentUser && typeof firebase !== 'undefined' && firebaseInitialized) {
                 let secondaryApp = null;
                 try {
                     const secondaryAppName = 'userCreation';
@@ -441,32 +492,35 @@
                     await secondaryAuth.signOut();
                 } catch (authErr) {
                     if (authErr.code === 'auth/email-already-in-use') {
-                        showToast('A Firebase Auth account already exists for this username.', 'error');
+                        console.warn('Firebase Auth account already exists for this username; saving to Firestore only.');
                     } else {
-                        showToast('Failed to create Firebase Auth account: ' + authErr.message, 'error');
+                        console.warn('Firebase Auth creation failed:', authErr.message, '— user saved locally.');
                     }
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Add User';
-                    return;
                 } finally {
                     if (secondaryApp) {
                         secondaryApp.delete().catch(() => {});
                     }
                 }
+
+                if (newUid) {
+                    const profileData = {
+                        username, displayName, email, role,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    try {
+                        await db.collection(APP_USERS_COLLECTION).doc(newUid).set(profileData);
+                    } catch (err) {
+                        console.warn('Failed to save user profile to Firestore:', err.message, '— user saved locally.');
+                    }
+                }
+            } else if (!db || !(auth && auth.currentUser)) {
+                // Firebase not available — refresh the local-only table.
+                allAppUsers = mergeUsers([], getLocalUsers());
+                renderUsersTable(allAppUsers);
             }
 
-            const profileData = { username, displayName, email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-            try {
-                if (newUid) {
-                    await db.collection(APP_USERS_COLLECTION).doc(newUid).set(profileData);
-                } else {
-                    await db.collection(APP_USERS_COLLECTION).add(profileData);
-                }
-                e.target.reset();
-                showToast('User added successfully!', 'success');
-            } catch (err) {
-                showToast('Failed to save user profile: ' + err.message, 'error');
-            }
+            e.target.reset();
+            showToast('User added successfully!', 'success');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Add User';
         });
@@ -491,12 +545,24 @@
                 displayName: document.getElementById('edit-displayname').value.trim(),
                 role: document.getElementById('edit-role').value
             };
-            try {
-                await db.collection(APP_USERS_COLLECTION).doc(uid).update(updates);
+            const user = allAppUsers.find(u => u._uid === uid);
+            if (user) {
+                upsertLocalUser({ username: user.username, ...updates });
+            }
+            const isLocal = uid.startsWith('local_');
+            if (!isLocal && db) {
+                try {
+                    await db.collection(APP_USERS_COLLECTION).doc(uid).update(updates);
+                    document.getElementById('edit-user-modal').style.display = 'none';
+                    showToast('User updated successfully!', 'success');
+                } catch (err) {
+                    showToast('Failed to update user in Firebase: ' + err.message, 'error');
+                }
+            } else {
+                allAppUsers = allAppUsers.map(u => u._uid === uid ? { ...u, ...updates } : u);
+                renderUsersTable(allAppUsers);
                 document.getElementById('edit-user-modal').style.display = 'none';
                 showToast('User updated successfully!', 'success');
-            } catch (err) {
-                showToast('Failed to update user: ' + err.message, 'error');
             }
         });
         // ── End User Management ───────────────────────────────────────────────

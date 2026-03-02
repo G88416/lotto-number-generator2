@@ -6,6 +6,7 @@
     <title>Login - Charity and Faith Mission</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="firebase-config.js"></script>
     <style>
@@ -194,6 +195,18 @@
         // Firebase email convention: <username>@charityfaithmission.org
         const FIREBASE_EMAIL_DOMAIN = 'charityfaithmission.org';
         const APP_USERS_COLLECTION = 'appUsers';
+
+        // Read locally-managed users created via Settings → User Management.
+        // NOTE: passwords are stored in plaintext for demo purposes only (same
+        // model as the hardcoded DEMO_USERS above).
+        function getLocalUsers() {
+            try {
+                return JSON.parse(localStorage.getItem('localAppUsers')) || [];
+            } catch (e) {
+                console.warn('Failed to parse localAppUsers from localStorage:', e.message);
+                return [];
+            }
+        }
         
         const form = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
@@ -238,6 +251,16 @@
                             }
                         } catch (fsErr) {
                             console.warn('Firestore profile lookup failed:', fsErr.message);
+                        }
+                    }
+
+                    // If no Firestore profile found, check localStorage profile as fallback.
+                    if (!hasFirestoreProfile) {
+                        const localUser = getLocalUsers().find(u => u.username === username);
+                        if (localUser) {
+                            displayName = localUser.displayName || username;
+                            firestoreRole = localUser.role || null;
+                            hasFirestoreProfile = true;
                         }
                     }
 
@@ -318,6 +341,24 @@
                     username,
                     role: selectedRole,
                     name: demoUser.name,
+                    loginTime: new Date().toISOString()
+                }));
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // ── Path 3: Locally-managed users (created via Settings → User Management) ──
+            const localUser = getLocalUsers().find(u => u.username === username);
+            if (localUser && localUser.password === password) {
+                if (localUser.role !== selectedRole) {
+                    showError('Selected role does not match your credentials.');
+                    loginBtn.disabled = false;
+                    return;
+                }
+                localStorage.setItem('userSession', JSON.stringify({
+                    username,
+                    role: localUser.role,
+                    name: localUser.displayName || username,
                     loginTime: new Date().toISOString()
                 }));
                 window.location.href = 'index.html';
