@@ -12,6 +12,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="../firebase-config.js"></script>
     <script src="../auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js" integrity="sha384-/cXAMbzovUIKbBERjPmR3SnPTh8siWr5lsvFYj1Uq4XP0yaJUZJmsh0YXyGv5P0y" crossorigin="anonymous"></script>
 </head>
 <body>
     <header>
@@ -98,6 +100,13 @@
             </thead>
             <tbody></tbody>
         </table>
+
+        <div class="import-section" style="margin-top:15px;">
+            <label for="import-tithes-file">📤 Import Contributions:</label>
+            <input type="file" id="import-tithes-file" accept=".csv,.xlsx,.xls,.docx" aria-label="Choose file to import contributions">
+            <button type="button" id="import-tithes-btn" class="btn-import">Import</button>
+            <span class="import-status" id="import-tithes-status" aria-live="polite"></span>
+        </div>
     </main>
 
     <script>
@@ -193,6 +202,49 @@
         });
         
         populateTable();
+
+        document.getElementById('import-tithes-btn').addEventListener('click', () => {
+            const fileInput = document.getElementById('import-tithes-file');
+            const statusEl = document.getElementById('import-tithes-status');
+            const file = fileInput.files[0];
+            if (!file) {
+                statusEl.textContent = '⚠️ Please select a file first.';
+                return;
+            }
+            statusEl.textContent = '⏳ Parsing file…';
+            parseUploadedFile(file, (rows, err) => {
+                if (err) { statusEl.textContent = '❌ ' + err; return; }
+                if (!rows || rows.length === 0) {
+                    statusEl.textContent = '⚠️ No data rows found in the file.';
+                    return;
+                }
+                const validTypes = ['Tithe', 'Offering', 'Donation'];
+                const records = rows.map(row => {
+                    const rawType = getRowField(row, ['type', 'contribution type', 'category']);
+                    const type = validTypes.find(t => t.toLowerCase() === rawType.toLowerCase()) || 'Tithe';
+                    return {
+                        member: getRowField(row, ['member', 'member name', 'name', 'donor']),
+                        type,
+                        amount: getRowField(row, ['amount', 'contribution', 'value']),
+                        date:   getRowField(row, ['date', 'contribution date', 'payment date']),
+                        branch: getRowField(row, ['branch', 'church', 'location'])
+                    };
+                }).filter(r => r.member);
+                if (records.length === 0) {
+                    statusEl.textContent = '⚠️ No valid contribution rows found. Ensure the file has a Member column.';
+                    return;
+                }
+                statusEl.textContent = `⏳ Saving ${records.length} contribution(s)…`;
+                Promise.all(records.map(r => saveToFirebase(COLLECTION, r))).then(() => {
+                    statusEl.textContent = `✅ Imported ${records.length} contribution(s) successfully.`;
+                    fileInput.value = '';
+                    populateTable();
+                    showToast(`Imported ${records.length} contribution(s) from file.`, 'success');
+                }).catch(() => {
+                    statusEl.textContent = '❌ Some records failed to save. Please try again.';
+                });
+            });
+        });
     </script>
 </body>
 </html>

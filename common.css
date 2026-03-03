@@ -451,6 +451,49 @@ table button {
     font-size: 13px;
 }
 
+/* ── File Import Section ── */
+.import-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    background: #f0f4ff;
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+}
+
+.import-section label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a5298;
+    white-space: nowrap;
+}
+
+.import-section input[type="file"] {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border: 2px solid #e1e8ed;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+}
+
+.btn-import {
+    background: linear-gradient(135deg, #2196f3 0%, #1565c0 100%);
+    white-space: nowrap;
+}
+
+.import-status {
+    width: 100%;
+    font-size: 13px;
+    color: #495057;
+    min-height: 18px;
+}
+
 /* ── Footer ── */
 footer {
     text-align: center;
