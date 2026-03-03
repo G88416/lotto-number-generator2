@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Management - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="../common.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+    <script src="../auth.js"></script>
+    <style>
+        /* Tab navigation */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background: #f0f4ff;
+            color: #2a5298;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            margin-right: 4px;
+            transition: background 0.2s, color 0.2s;
+            transform: none;
+            box-shadow: none;
+        }
+        .tab-btn:hover {
+            background: #dce6ff;
+            transform: none;
+            box-shadow: none;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Monthly income table */
+        .month-label { font-weight: 600; color: #2a5298; }
+
+        /* Status badges for requisitions */
+        .badge-approved { background: #d4edda; color: #155724; }
+        .badge-rejected { background: #f8d7da; color: #721c24; }
+        .badge-pending  { background: #fff3cd; color: #856404; }
+
+        /* Net balance highlight */
+        .net-positive { color: #155724; font-weight: 700; }
+        .net-negative { color: #721c24; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Finance Management</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+
+    <nav>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+        <ul id="nav-menu">
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes &amp; Offerings</a></li>
+            <li><a href="finance.html" class="active">Finance</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h2>💵 Finance Management</h2>
+        <p>Manage monthly income, expenses, and payment requisitions for your organization.</p>
+
+        <!-- Tab navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="income">📈 Monthly Income</button>
+            <button class="tab-btn" data-tab="expenses">📉 Expenses</button>
+            <button class="tab-btn" data-tab="requisitions">📋 Payment Requisitions</button>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 1 – MONTHLY INCOME
+             Aggregates tithes & offerings from the existing 'tithes' collection
+        ═══════════════════════════════════════════════════════════ -->
+        <div class="tab-panel active" id="tab-income">
+            <h3 style="color:#2a5298;margin-bottom:12px;">Monthly Income Summary</h3>
+            <p style="margin-bottom:16px;color:#555;">Income is automatically calculated from Tithes &amp; Offerings records.</p>
+
+            <div class="table-toolbar">
+                <div class="search-bar">
+                    <label for="income-year-filter" style="font-weight:600;color:#495057;white-space:nowrap;">Filter by Year:</label>
+                    <select id="income-year-filter">
+                        <option value="">All Years</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Summary totals -->
+            <div class="summary-bar" id="income-summary" style="margin-bottom:20px;">
+                <div class="summary-item">
+                    <span id="income-total-tithe">R 0.00</span>Total Tithes
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#56ab2f 0%,#a8e063 100%);">
+                    <span id="income-total-offering">R 0.00</span>Total Offerings
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);">
+                    <span id="income-total-donation">R 0.00</span>Total Donations
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);">
+                    <span id="income-grand-total">R 0.00</span>Grand Total
+                </div>
+            </div>
+
+            <table id="income-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Tithes (R)</th>
+                        <th>Offerings (R)</th>
+                        <th>Donations (R)</th>
+                        <th>Total Income (R)</th>
+                        <th>Total Expenses (R)</th>
+                        <th>Net Balance (R)</th>
+                    </tr>
+                </thead>
+                <tbody id="income-tbody">
+                    <tr><td colspan="7" style="text-align:center">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 2 – EXPENSES
+        ═══════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-expenses">
+            <h3 style="color:#2a5298;margin-bottom:12px;">Record Expense</h3>
+
+            <form id="add-expense-form">
+                <div class="form-row">
+                    <label for="exp-description">Description *</label>
+                    <input type="text" id="exp-description" placeholder="Expense description" required>
+                </div>
+                <div class="form-row">
+                    <label for="exp-category">Category *</label>
+                    <select id="exp-category" required>
+                        <option value="">Select Category</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Salaries">Salaries</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Events">Events</option>
+                        <option value="Outreach">Outreach</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label for="exp-amount">Amount (R) *</label>
+                    <input type="number" id="exp-amount" placeholder="Amount" required step="0.01" min="0" inputmode="decimal">
+                </div>
+                <div class="form-row">
+                    <label for="exp-date">Date *</label>
+                    <input type="date" id="exp-date" required>
+                </div>
+                <div class="form-row">
+                    <label for="exp-approved-by">Approved By</label>
+                    <input type="text" id="exp-approved-by" placeholder="Name of approver">
+                </div>
+                <div class="form-row">
+                    <label for="exp-notes">Notes</label>
+                    <textarea id="exp-notes" placeholder="Additional notes"></textarea>
+                </div>
+                <button type="submit">Record Expense</button>
+            </form>
+
+            <div class="table-toolbar" style="margin-top:20px;">
+                <h3>Expense Records <span class="record-count" id="expense-count"></span></h3>
+                <div class="search-bar">
+                    <input type="search" id="expense-search" placeholder="Search expenses…" aria-label="Search expenses">
+                </div>
+            </div>
+
+            <div class="summary-bar" id="expense-summary" style="margin-bottom:20px;">
+                <div class="summary-item" style="background:linear-gradient(135deg,#eb3349 0%,#f45c43 100%);">
+                    <span id="expense-month-total">R 0.00</span>This Month
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);">
+                    <span id="expense-year-total">R 0.00</span>This Year
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+                    <span id="expense-grand-total">R 0.00</span>All Time
+                </div>
+            </div>
+
+            <table id="expenses-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Amount (R)</th>
+                        <th>Approved By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="expenses-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TAB 3 – PAYMENT REQUISITIONS
+        ═══════════════════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-requisitions">
+            <h3 style="color:#2a5298;margin-bottom:12px;">New Payment Requisition</h3>
+
+            <form id="add-requisition-form">
+                <div class="form-row">
+                    <label for="req-requestor">Requested By *</label>
+                    <input type="text" id="req-requestor" placeholder="Full name of requestor" required>
+                </div>
+                <div class="form-row">
+                    <label for="req-department">Department / Ministry</label>
+                    <input type="text" id="req-department" placeholder="e.g. Youth Ministry">
+                </div>
+                <div class="form-row">
+                    <label for="req-purpose">Purpose *</label>
+                    <input type="text" id="req-purpose" placeholder="Brief purpose of payment" required>
+                </div>
+                <div class="form-row">
+                    <label for="req-category">Category *</label>
+                    <select id="req-category" required>
+                        <option value="">Select Category</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Salaries">Salaries</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Events">Events</option>
+                        <option value="Outreach">Outreach</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label for="req-amount">Amount Requested (R) *</label>
+                    <input type="number" id="req-amount" placeholder="Amount" required step="0.01" min="0" inputmode="decimal">
+                </div>
+                <div class="form-row">
+                    <label for="req-date-required">Date Required *</label>
+                    <input type="date" id="req-date-required" required>
+                </div>
+                <div class="form-row">
+                    <label for="req-payee">Payee / Supplier</label>
+                    <input type="text" id="req-payee" placeholder="Who will receive the payment">
+                </div>
+                <div class="form-row">
+                    <label for="req-description">Full Description *</label>
+                    <textarea id="req-description" placeholder="Detailed description of what the payment is for" required></textarea>
+                </div>
+                <button type="submit">Submit Requisition</button>
+            </form>
+
+            <div class="table-toolbar" style="margin-top:20px;">
+                <h3>Requisition Records <span class="record-count" id="req-count"></span></h3>
+                <div class="search-bar">
+                    <input type="search" id="req-search" placeholder="Search requisitions…" aria-label="Search requisitions">
+                    <select id="req-status-filter">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="summary-bar" style="margin-bottom:20px;">
+                <div class="summary-item" style="background:linear-gradient(135deg,#fd7e14 0%,#ffc107 100%);color:#333;">
+                    <span id="req-pending-count">0</span>Pending
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#56ab2f 0%,#a8e063 100%);">
+                    <span id="req-approved-count">0</span>Approved
+                </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#eb3349 0%,#f45c43 100%);">
+                    <span id="req-rejected-count">0</span>Rejected
+                </div>
+                <div class="summary-item">
+                    <span id="req-total-amount">R 0.00</span>Total Requested
+                </div>
+            </div>
+
+            <table id="requisitions-table">
+                <thead>
+                    <tr>
+                        <th>Date Required</th>
+                        <th>Requested By</th>
+                        <th>Purpose</th>
+                        <th>Category</th>
+                        <th>Amount (R)</th>
+                        <th>Payee</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="requisitions-tbody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer>
+        &copy; <span id="year"></span> Charity and Faith Mission &mdash; Management System
+    </footer>
+
+    <script>
+        initializeFirebase();
+        setupLogout();
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        document.getElementById('nav-toggle').addEventListener('click', () => {
+            document.getElementById('nav-menu').classList.toggle('open');
+        });
+
+        /* ── Tab switching ── */
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        /* ═══════════════════════════════════════════
+           INCOME TAB
+        ═══════════════════════════════════════════ */
+        let allTithes = [];
+        let allExpenses = [];
+
+        const MONTHS = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+
+        function getMonthKey(dateStr) {
+            if (!dateStr) return null;
+            // Handle Firestore timestamp
+            if (typeof dateStr === 'object' && dateStr.seconds) {
+                const d = new Date(dateStr.seconds * 1000);
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            }
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return null;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        }
+
+        function normalizeIncomeType(type) {
+            return ['Tithe','Offering','Donation'].includes(type) ? type : 'Donation';
+        }
+
+        function renderIncomeTable() {
+            const yearFilter = document.getElementById('income-year-filter').value;
+
+            // Aggregate tithes by month
+            const incomeByMonth = {};
+            allTithes.forEach(t => {
+                const key = getMonthKey(t.date);
+                if (!key) return;
+                if (yearFilter && !key.startsWith(yearFilter)) return;
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, Donation:0 };
+                const amt = parseFloat(t.amount) || 0;
+                const type = normalizeIncomeType(t.type);
+                incomeByMonth[key][type] += amt;
+            });
+
+            // Aggregate expenses by month
+            const expenseByMonth = {};
+            allExpenses.forEach(e => {
+                const key = getMonthKey(e.date);
+                if (!key) return;
+                if (yearFilter && !key.startsWith(yearFilter)) return;
+                if (!expenseByMonth[key]) expenseByMonth[key] = 0;
+                expenseByMonth[key] += parseFloat(e.amount) || 0;
+            });
+
+            // Collect all months
+            const allKeys = new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)]);
+            const sortedKeys = Array.from(allKeys).sort().reverse();
+
+            const tbody = document.getElementById('income-tbody');
+            tbody.innerHTML = '';
+
+            if (sortedKeys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No income records found.</td></tr>';
+                updateIncomeSummary([]);
+                return;
+            }
+
+            sortedKeys.forEach(key => {
+                const income = incomeByMonth[key] || { Tithe:0, Offering:0, Donation:0 };
+                const totalIncome = income.Tithe + income.Offering + income.Donation;
+                const totalExp = expenseByMonth[key] || 0;
+                const net = totalIncome - totalExp;
+                const [year, month] = key.split('-');
+                const label = `${MONTHS[parseInt(month,10)-1]} ${year}`;
+                const netClass = net >= 0 ? 'net-positive' : 'net-negative';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="month-label">${escapeHtml(label)}</td>
+                    <td>R ${income.Tithe.toFixed(2)}</td>
+                    <td>R ${income.Offering.toFixed(2)}</td>
+                    <td>R ${income.Donation.toFixed(2)}</td>
+                    <td>R ${totalIncome.toFixed(2)}</td>
+                    <td>R ${totalExp.toFixed(2)}</td>
+                    <td class="${netClass}">R ${net.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            updateIncomeSummary(sortedKeys.map(k => ({
+                income: incomeByMonth[k] || { Tithe:0, Offering:0, Donation:0 }
+            })));
+        }
+
+        function updateIncomeSummary(rows) {
+            const filtered = allTithes.filter(t => {
+                const key = getMonthKey(t.date);
+                const yearFilter = document.getElementById('income-year-filter').value;
+                return key && (!yearFilter || key.startsWith(yearFilter));
+            });
+            const sums = { Tithe:0, Offering:0, Donation:0 };
+            filtered.forEach(t => {
+                const amt = parseFloat(t.amount) || 0;
+                const type = normalizeIncomeType(t.type);
+                sums[type] += amt;
+            });
+            const total = sums.Tithe + sums.Offering + sums.Donation;
+            document.getElementById('income-total-tithe').textContent    = 'R ' + sums.Tithe.toFixed(2);
+            document.getElementById('income-total-offering').textContent = 'R ' + sums.Offering.toFixed(2);
+            document.getElementById('income-total-donation').textContent = 'R ' + sums.Donation.toFixed(2);
+            document.getElementById('income-grand-total').textContent    = 'R ' + total.toFixed(2);
+        }
+
+        function populateYearFilter() {
+            const years = new Set();
+            allTithes.forEach(t => {
+                const key = getMonthKey(t.date);
+                if (key) years.add(key.split('-')[0]);
+            });
+            allExpenses.forEach(e => {
+                const key = getMonthKey(e.date);
+                if (key) years.add(key.split('-')[0]);
+            });
+            const sel = document.getElementById('income-year-filter');
+            const current = sel.value;
+            // keep the "All Years" option, rebuild the rest
+            while (sel.options.length > 1) sel.remove(1);
+            Array.from(years).sort().reverse().forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                sel.appendChild(opt);
+            });
+            if (current) sel.value = current;
+        }
+
+        document.getElementById('income-year-filter').addEventListener('change', renderIncomeTable);
+
+        /* ═══════════════════════════════════════════
+           EXPENSES TAB
+        ═══════════════════════════════════════════ */
+        const EXP_COLLECTION = 'expenses';
+
+        function updateExpenseSummary(data) {
+            const now = new Date();
+            const curYear  = now.getFullYear();
+            const curMonth = now.getMonth() + 1;
+            let monthTotal = 0, yearTotal = 0, grandTotal = 0;
+            data.forEach(e => {
+                const amt = parseFloat(e.amount) || 0;
+                grandTotal += amt;
+                const key = getMonthKey(e.date);
+                if (key) {
+                    const [y, m] = key.split('-').map(Number);
+                    if (y === curYear) yearTotal += amt;
+                    if (y === curYear && m === curMonth) monthTotal += amt;
+                }
+            });
+            document.getElementById('expense-month-total').textContent = 'R ' + monthTotal.toFixed(2);
+            document.getElementById('expense-year-total').textContent  = 'R ' + yearTotal.toFixed(2);
+            document.getElementById('expense-grand-total').textContent = 'R ' + grandTotal.toFixed(2);
+        }
+
+        function renderExpenses(data) {
+            const tbody = document.getElementById('expenses-tbody');
+            tbody.innerHTML = '';
+            updateRecordCount('expense-count', data.length);
+            updateExpenseSummary(data);
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No expense records found.</td></tr>';
+                return;
+            }
+            data.forEach(e => {
+                const row = document.createElement('tr');
+                const docId = e._docId || e.id;
+                row.innerHTML = `
+                    <td>${escapeHtml(formatDate(e.date))}</td>
+                    <td>${escapeHtml(e.description)}</td>
+                    <td>${escapeHtml(e.category)}</td>
+                    <td>R ${parseFloat(e.amount || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(e.approvedBy || '')}</td>
+                    <td>
+                        <button class="btn-danger" data-action="delete-expense">Delete</button>
+                    </td>
+                `;
+                row.querySelector('[data-action="delete-expense"]').addEventListener('click', () => deleteExpense(docId));
+                tbody.appendChild(row);
+            });
+        }
+
+        function populateExpenses() {
+            loadFromFirebase(EXP_COLLECTION, data => {
+                allExpenses = data;
+                populateYearFilter();
+                renderExpenses(data);
+                renderIncomeTable();
+            });
+        }
+
+        document.getElementById('expense-search').addEventListener('input', e => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allExpenses.filter(exp =>
+                [exp.description, exp.category, exp.approvedBy].some(v => (v||'').toLowerCase().includes(term))
+            );
+            renderExpenses(filtered);
+        });
+
+        document.getElementById('add-expense-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const data = {
+                description: document.getElementById('exp-description').value,
+                category:    document.getElementById('exp-category').value,
+                amount:      document.getElementById('exp-amount').value,
+                date:        document.getElementById('exp-date').value,
+                approvedBy:  document.getElementById('exp-approved-by').value,
+                notes:       document.getElementById('exp-notes').value
+            };
+            saveToFirebase(EXP_COLLECTION, data).then(() => {
+                e.target.reset();
+                showToast('Expense recorded successfully!', 'success');
+                populateExpenses();
+            });
+        });
+
+        function deleteExpense(id) {
+            if (confirm('Are you sure you want to delete this expense?')) {
+                deleteFromFirebase(EXP_COLLECTION, id).then(() => {
+                    showToast('Expense deleted.', 'success');
+                    populateExpenses();
+                });
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+           PAYMENT REQUISITIONS TAB
+        ═══════════════════════════════════════════ */
+        const REQ_COLLECTION = 'payment_requisitions';
+        let allRequisitions = [];
+
+        function renderRequisitions(data) {
+            const tbody = document.getElementById('requisitions-tbody');
+            tbody.innerHTML = '';
+            updateRecordCount('req-count', data.length);
+
+            // Update summary counts
+            const pending  = data.filter(r => r.status === 'Pending').length;
+            const approved = data.filter(r => r.status === 'Approved').length;
+            const rejected = data.filter(r => r.status === 'Rejected').length;
+            const totalAmt = data.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            document.getElementById('req-pending-count').textContent  = pending;
+            document.getElementById('req-approved-count').textContent = approved;
+            document.getElementById('req-rejected-count').textContent = rejected;
+            document.getElementById('req-total-amount').textContent   = 'R ' + totalAmt.toFixed(2);
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">No requisitions found.</td></tr>';
+                return;
+            }
+
+            data.forEach(r => {
+                const statusClass = r.status === 'Approved' ? 'badge-approved'
+                                  : r.status === 'Rejected' ? 'badge-rejected'
+                                  : 'badge-pending';
+                const docId = r._docId || r.id;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(formatDate(r.dateRequired))}</td>
+                    <td>${escapeHtml(r.requestor)}</td>
+                    <td>${escapeHtml(r.purpose)}</td>
+                    <td>${escapeHtml(r.category)}</td>
+                    <td>R ${parseFloat(r.amount || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(r.payee || '')}</td>
+                    <td><span class="badge ${statusClass}">${escapeHtml(r.status || 'Pending')}</span></td>
+                    <td>
+                        ${r.status === 'Pending' ? `
+                        <button class="btn-secondary" data-action="approve-req" style="font-size:12px;padding:5px 10px;">Approve</button>
+                        <button class="btn-danger"    data-action="reject-req"  style="font-size:12px;padding:5px 10px;">Reject</button>
+                        ` : ''}
+                        <button class="btn-danger" data-action="delete-req" style="font-size:12px;padding:5px 10px;">Delete</button>
+                    </td>
+                `;
+                const approveBtn = row.querySelector('[data-action="approve-req"]');
+                const rejectBtn  = row.querySelector('[data-action="reject-req"]');
+                if (approveBtn) approveBtn.addEventListener('click', () => updateReqStatus(docId, 'Approved'));
+                if (rejectBtn)  rejectBtn.addEventListener('click',  () => updateReqStatus(docId, 'Rejected'));
+                row.querySelector('[data-action="delete-req"]').addEventListener('click', () => deleteRequisition(docId));
+                tbody.appendChild(row);
+            });
+        }
+
+        function applyReqFilters() {
+            const term   = document.getElementById('req-search').value.toLowerCase();
+            const status = document.getElementById('req-status-filter').value;
+            const filtered = allRequisitions.filter(r => {
+                const matchStatus = !status || r.status === status;
+                const matchTerm   = !term || [r.requestor, r.purpose, r.category, r.payee, r.department]
+                                        .some(v => (v||'').toLowerCase().includes(term));
+                return matchStatus && matchTerm;
+            });
+            renderRequisitions(filtered);
+        }
+
+        document.getElementById('req-search').addEventListener('input', applyReqFilters);
+        document.getElementById('req-status-filter').addEventListener('change', applyReqFilters);
+
+        function populateRequisitions() {
+            loadFromFirebase(REQ_COLLECTION, data => {
+                allRequisitions = data;
+                applyReqFilters();
+            });
+        }
+
+        document.getElementById('add-requisition-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const data = {
+                requestor:    document.getElementById('req-requestor').value,
+                department:   document.getElementById('req-department').value,
+                purpose:      document.getElementById('req-purpose').value,
+                category:     document.getElementById('req-category').value,
+                amount:       document.getElementById('req-amount').value,
+                dateRequired: document.getElementById('req-date-required').value,
+                payee:        document.getElementById('req-payee').value,
+                description:  document.getElementById('req-description').value,
+                status:       'Pending',
+                submittedAt:  new Date().toISOString()
+            };
+            saveToFirebase(REQ_COLLECTION, data).then(() => {
+                e.target.reset();
+                showToast('Payment requisition submitted successfully!', 'success');
+                populateRequisitions();
+            });
+        });
+
+        function updateReqStatus(id, status) {
+            const label = status === 'Approved' ? 'approve' : 'reject';
+            if (confirm(`Are you sure you want to ${label} this requisition?`)) {
+                updateInFirebase(REQ_COLLECTION, id, { status }).then(() => {
+                    showToast(`Requisition ${status.toLowerCase()}.`, 'success');
+                    populateRequisitions();
+                });
+            }
+        }
+
+        function deleteRequisition(id) {
+            if (confirm('Are you sure you want to delete this requisition?')) {
+                deleteFromFirebase(REQ_COLLECTION, id).then(() => {
+                    showToast('Requisition deleted.', 'success');
+                    populateRequisitions();
+                });
+            }
+        }
+
+        /* ── Initial data load ── */
+        loadFromFirebase('tithes', data => {
+            allTithes = data;
+            populateYearFilter();
+            renderIncomeTable();
+        });
+        populateExpenses();
+        populateRequisitions();
+    </script>
+</body>
+</html>
