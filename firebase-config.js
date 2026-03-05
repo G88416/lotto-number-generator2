@@ -29,6 +29,13 @@ function initializeFirebase() {
         firebase.initializeApp(firebaseConfig);
         db = typeof firebase.firestore === 'function' ? firebase.firestore() : null;
         auth = typeof firebase.auth === 'function' ? firebase.auth() : null;
+        if (auth && firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    console.log('Firebase auth persistence set to local');
+                })
+                .catch((err) => console.error('Failed to set Firebase auth persistence to LOCAL:', err));
+        }
         // Firebase Functions SDK is only loaded on pages that need it (login, settings).
         functions = typeof firebase.functions === 'function' ? firebase.functions() : null;
         if (typeof firebase.analytics === 'function') {
