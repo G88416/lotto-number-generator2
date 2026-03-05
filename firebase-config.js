@@ -34,7 +34,7 @@ function initializeFirebase() {
                 .then(() => {
                     console.log('Firebase auth persistence set to local');
                 })
-                .catch((err) => console.error('Persistence error:', err));
+                .catch((err) => console.error('Failed to set Firebase auth persistence to LOCAL:', err));
         }
         // Firebase Functions SDK is only loaded on pages that need it (login, settings).
         functions = typeof firebase.functions === 'function' ? firebase.functions() : null;
