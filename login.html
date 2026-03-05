@@ -347,18 +347,16 @@
                     return;
                 } catch (firebaseError) {
                     const code = firebaseError.code;
-                    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
-                        showError('Invalid username or password.');
+                    if (code === 'auth/too-many-requests') {
+                        showError('Too many failed login attempts. Please try again later.');
                         loginBtn.disabled = false;
                         return;
                     }
-                    if (code === 'auth/user-not-found' || code === 'auth/user-disabled') {
-                        // User doesn't have a Firebase Auth account — fall through to demo fallback.
-                        console.warn('Firebase user not found, trying demo fallback.');
-                    } else {
-                        // Network / config errors — fall through to demo fallback.
-                        console.warn('Firebase sign-in error, trying demo fallback:', firebaseError.message);
-                    }
+                    // All other errors fall through to the demo / local-user fallback.
+                    // Note: newer Firebase versions with email-enumeration protection enabled
+                    // return 'auth/invalid-credential' for both wrong-password AND user-not-found,
+                    // so we must not hard-stop here — demo users need to reach the fallback path.
+                    console.warn('Firebase sign-in error, trying local fallback:', code);
                 }
             }
 

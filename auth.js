@@ -251,7 +251,9 @@ function _redirectToLogin() {
  *   Uses the localStorage session directly.
  */
 function initAuth() {
-    if (window.location.pathname.includes('login.html')) return;
+    // Skip auth check on the login page — handles both /login.html and /login (cleanUrls).
+    const pathname = window.location.pathname;
+    if (pathname.includes('login.html') || pathname === '/login' || pathname.endsWith('/login')) return;
 
     if (typeof auth !== 'undefined' && auth && firebaseInitialized) {
         auth.onAuthStateChanged(async (firebaseUser) => {
@@ -270,7 +272,7 @@ function initAuth() {
                             let pageName = '';
                             if (path.includes('/pages/')) {
                                 pageName = path.split('/pages/')[1].replace('.html', '');
-                            } else if (path.includes('index.html') || path.endsWith('/')) {
+                            } else if (path.includes('index.html') || path.endsWith('/') || path === '/index' || path.endsWith('/index')) {
                                 pageName = 'dashboard';
                             }
                             if (pageName && pageName !== 'dashboard' && !checkPageAccess(pageName)) {
@@ -338,7 +340,7 @@ function initAuth() {
             let pageName = '';
             if (path.includes('/pages/')) {
                 pageName = path.split('/pages/')[1].replace('.html', '');
-            } else if (path.includes('index.html') || path.endsWith('/')) {
+            } else if (path.includes('index.html') || path.endsWith('/') || path === '/index' || path.endsWith('/index')) {
                 pageName = 'dashboard';
             }
             if (pageName && pageName !== 'dashboard') {
@@ -376,7 +378,7 @@ function initAuth() {
         let pageName = '';
         if (path.includes('/pages/')) {
             pageName = path.split('/pages/')[1].replace('.html', '');
-        } else if (path.includes('index.html') || path.endsWith('/')) {
+        } else if (path.includes('index.html') || path.endsWith('/') || path === '/index' || path.endsWith('/index')) {
             pageName = 'dashboard';
         }
         if (pageName && pageName !== 'dashboard' && !checkPageAccess(pageName)) {

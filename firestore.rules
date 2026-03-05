@@ -88,6 +88,16 @@ service cloud.firestore {
       allow write: if isAuthenticated() && canWrite();
     }
 
+    match /expenses/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
+    match /payment_requisitions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && canWrite();
+    }
+
     // appUsers stores user profiles (username, displayName, role) linked by Firebase UID.
     // Any authenticated user may read their own profile; only admins may list or write.
     // A user may also create their own profile document when none exists yet (bootstrap),
