@@ -245,6 +245,10 @@
             if (auth) {
                 const email = `${username}@${FIREBASE_EMAIL_DOMAIN}`;
                 try {
+                    // Ensure persistence is configured before signing in to avoid a
+                    // race condition where signInWithEmailAndPassword starts before
+                    // setPersistence has resolved.
+                    await authPersistenceReady;
                     const credential = await auth.signInWithEmailAndPassword(email, password);
                     const uid = credential.user.uid;
 

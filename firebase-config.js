@@ -23,12 +23,23 @@ let auth = null;
 let analytics = null;
 let functions = null;
 let firebaseInitialized = false;
+// Resolves once auth persistence has been configured (or immediately if Firebase
+// is unavailable). Callers should await this before performing sign-in operations
+// to guarantee the persistence mode is active.
+let authPersistenceReady = Promise.resolve();
 
 function initializeFirebase() {
     if (typeof firebase !== 'undefined' && !firebaseInitialized) {
         firebase.initializeApp(firebaseConfig);
         db = typeof firebase.firestore === 'function' ? firebase.firestore() : null;
         auth = typeof firebase.auth === 'function' ? firebase.auth() : null;
+        // Set LOCAL persistence early so the auth session survives page reloads and
+        // browser restarts. Store the promise so sign-in callers can await it and
+        // avoid a race condition where a sign-in starts before persistence is set.
+        if (auth) {
+            authPersistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .catch((err) => console.error('[auth] Persistence error:', err));
+        }
         // Firebase Functions SDK is only loaded on pages that need it (login, settings).
         functions = typeof firebase.functions === 'function' ? firebase.functions() : null;
         if (typeof firebase.analytics === 'function') {
