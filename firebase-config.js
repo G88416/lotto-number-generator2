@@ -8,7 +8,7 @@
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
     apiKey: "AIzaSyDIPGXu6QAIgSTNxgqOyRabOfwJ_uG_JYU",
-    authDomain: "cms-charity.firebaseapp.com",
+    authDomain: "cms-charity.web.app",
     databaseURL: "https://cms-charity-default-rtdb.firebaseio.com",
     projectId: "cms-charity",
     storageBucket: "cms-charity.firebasestorage.app",
