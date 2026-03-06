@@ -25,6 +25,8 @@ let functions = null;
 let firebaseInitialized = false;
 const JSON_ERROR_SNIPPET_MAX_LENGTH = 300;
 const JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET = 297;
+const MARKUP_PREVIEW_LENGTH = 200;
+// Pattern assumes the preview has already been lowercased.
 const MARKUP_TAG_PATTERN = /^<\s*[a-z][a-z0-9-]*[\s>]/;
 
 /**
@@ -53,11 +55,11 @@ function logJsonParseWarning(options, message, snippet) {
  * @returns {boolean}
  */
 function looksLikeMarkup(text) {
-    const lowerPreview = text.toLowerCase();
-    return lowerPreview.startsWith('<!doctype')
-        || lowerPreview.startsWith('<?xml')
-        || lowerPreview.startsWith('<html')
-        || MARKUP_TAG_PATTERN.test(lowerPreview);
+    const preview = text.slice(0, MARKUP_PREVIEW_LENGTH).toLowerCase();
+    return preview.startsWith('<!doctype')
+        || preview.startsWith('<?xml')
+        || preview.startsWith('<html')
+        || MARKUP_TAG_PATTERN.test(preview);
 }
 
 /**
@@ -103,7 +105,8 @@ function getResponseContentType(response) {
         return response.headers.get('content-type');
     }
     if (typeof response.headers === 'object') {
-        return response.headers['content-type'] ?? response.headers['Content-Type'] ?? null;
+        if ('content-type' in response.headers) return response.headers['content-type'];
+        if ('Content-Type' in response.headers) return response.headers['Content-Type'];
     }
     return null;
 }
