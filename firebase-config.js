@@ -23,6 +23,8 @@ let auth = null;
 let analytics = null;
 let functions = null;
 let firebaseInitialized = false;
+const JSON_SNIPPET_MAX_LENGTH = 120;
+const JSON_SNIPPET_TRUNCATE_LENGTH = 117;
 
 /**
  * Safely parse JSON with a fallback value for invalid content or non-string input.
@@ -39,12 +41,10 @@ function safeJsonParse(raw, fallback, label) {
     try {
         return JSON.parse(normalized);
     } catch (err) {
-        const MAX_SNIPPET_LENGTH = 120;
-        const SNIPPET_TRUNCATE_LENGTH = 117;
         const hint = normalized.startsWith('<') ? ' (content looks like XML/HTML)' : '';
         const target = label ? ` for ${label}` : '';
-        const snippet = normalized.length > MAX_SNIPPET_LENGTH
-            ? `${normalized.slice(0, SNIPPET_TRUNCATE_LENGTH)}...`
+        const snippet = normalized.length > JSON_SNIPPET_MAX_LENGTH
+            ? `${normalized.slice(0, JSON_SNIPPET_TRUNCATE_LENGTH)}...`
             : normalized;
         console.warn(`Unable to parse JSON${target}${hint}:`, err.message, snippet);
         return fallback;

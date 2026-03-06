@@ -268,10 +268,6 @@
                 reader.onload = (event) => {
                     try {
                         const raw = String(event.target.result || '').trim();
-                        if (!raw) {
-                            showToast('Selected file is empty. Please choose a valid JSON backup.', 'error');
-                            return;
-                        }
                         const data = safeJsonParse(raw, null, 'backup file');
                         if (!data || typeof data !== 'object' || Array.isArray(data)) {
                             showToast('Selected file is not a valid JSON backup.', 'error');
