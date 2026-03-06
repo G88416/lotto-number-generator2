@@ -45,7 +45,7 @@ function logJsonParseWarning(options, message, snippet, hint) {
     if (options && options.contentType) {
         console.warn('Content-Type:', options.contentType);
     }
-    console.warn('Raw response (first 300 chars):', snippet);
+    console.warn(`Raw response (first ${JSON_ERROR_SNIPPET_MAX_LENGTH} chars):`, snippet);
 }
 
 function safeJsonParse(raw, fallback, labelOrOptions) {
@@ -59,7 +59,7 @@ function safeJsonParse(raw, fallback, labelOrOptions) {
     const looksLikeMarkup = lowerPreview.startsWith('<!doctype')
         || lowerPreview.startsWith('<?xml')
         || lowerPreview.startsWith('<html')
-        || lowerPreview.startsWith('<');
+        || /^<\s*[a-z]/.test(lowerPreview);
     const snippet = normalized.length > JSON_ERROR_SNIPPET_MAX_LENGTH
         ? `${normalized.slice(0, JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET)}...`
         : normalized;
