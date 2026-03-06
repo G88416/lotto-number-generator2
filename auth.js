@@ -26,7 +26,7 @@ const ROLE_PERMISSIONS = {
     pastor: {
         name: 'Pastors Info',
         pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'prayers', 'sermons', 'volunteers', 'media', 'settings'],
-        canEdit: false,
+        canEdit: true,
         canDelete: false
     }
 };

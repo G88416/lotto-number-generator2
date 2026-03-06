@@ -54,7 +54,7 @@
             <div class="form-row"><label for="tithe-type">Type</label>
             <select id="tithe-type">
                 <option value="Tithe">Tithe</option>
-                <option value="Offering">Offering</option>
+                <option value="Offering">Missions Offering</option>
                 <option value="EFT">EFT</option>
             </select></div>
             <div class="form-row"><label for="tithe-amount">Amount *</label>
@@ -71,7 +71,7 @@
                 <span id="sum-tithe">R 0.00</span>Tithes
             </div>
             <div class="summary-item" style="background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);">
-                <span id="sum-offering">R 0.00</span>Offerings
+                <span id="sum-offering">R 0.00</span>Missions Offering
             </div>
             <div class="summary-item" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                 <span id="sum-eft">R 0.00</span>EFT
@@ -129,8 +129,13 @@
             const lowered = normalized.toLowerCase();
             if (lowered === 'donation' || lowered === 'eft') return 'EFT';
             if (lowered === 'tithe') return 'Tithe';
-            if (lowered === 'offering') return 'Offering';
+            if (lowered === 'offering' || lowered === 'missions offering' || lowered === 'mission offering') return 'Offering';
             return 'EFT';
+        }
+
+        function formatContributionType(type) {
+            const normalized = normalizeContributionType(type);
+            return normalized === 'Offering' ? 'Missions Offering' : normalized;
         }
 
         function updateSummary(data) {
@@ -161,7 +166,7 @@
             data.forEach((tithe) => {
                 const row = document.createElement('tr');
                 const docId = tithe._docId || tithe.id;
-                const displayType = normalizeContributionType(tithe.type);
+                const displayType = formatContributionType(tithe.type);
                 row.innerHTML = `
                     <td>${escapeHtml(tithe.member)}</td>
                     <td>${escapeHtml(displayType)}</td>
@@ -188,7 +193,7 @@
         document.getElementById('tithe-search').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             const filtered = allTithes.filter(t =>
-                [t.member, normalizeContributionType(t.type), t.branch].some(v => (v || '').toLowerCase().includes(term))
+                [t.member, formatContributionType(t.type), t.branch].some(v => (v || '').toLowerCase().includes(term))
             );
             renderTable(filtered);
         });
@@ -266,6 +271,8 @@
                 const typeAliases = {
                     tithe: 'Tithe',
                     offering: 'Offering',
+                    'missions offering': 'Offering',
+                    'mission offering': 'Offering',
                     donation: 'EFT',
                     eft: 'EFT'
                 };
