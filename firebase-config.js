@@ -25,8 +25,8 @@ let functions = null;
 let firebaseInitialized = false;
 
 /**
- * Safely parse JSON with a fallback value for invalid content.
- * @param {string|null} raw
+ * Safely parse JSON with a fallback value for invalid content or non-string input.
+ * @param {string} raw
  * @param {*} fallback
  * @param {string} [label]
  * @returns {*}
