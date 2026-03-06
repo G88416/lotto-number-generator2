@@ -55,10 +55,11 @@ function logJsonParseWarning(options, message, snippet, hint) {
  */
 function looksLikeMarkup(text) {
     const lowerPreview = text.toLowerCase();
+    const markupTagPattern = /^<\s*[a-z][a-z0-9-]*[\s>]/;
     return lowerPreview.startsWith('<!doctype')
         || lowerPreview.startsWith('<?xml')
         || lowerPreview.startsWith('<html')
-        || /^<\s*[a-z][a-z0-9-]*[\s>]/.test(lowerPreview); // Opening tag like <div> or <svg ...>
+        || markupTagPattern.test(lowerPreview);
 }
 
 /**
@@ -106,6 +107,9 @@ function getResponseContentType(response) {
     if (typeof response.headers === 'object' && 'content-type' in response.headers) {
         return response.headers['content-type'];
     }
+    if (typeof response.headers === 'object' && 'Content-Type' in response.headers) {
+        return response.headers['Content-Type'];
+    }
     return null;
 }
 
@@ -130,7 +134,7 @@ async function readJsonResponse(response, fallback, label) {
             contentType
         });
     }
-    if (Object.prototype.hasOwnProperty.call(response, 'data')) {
+    if ('data' in response) {
         const data = response.data;
         if (typeof data === 'string') {
             return safeJsonParse(data, fallback, {
