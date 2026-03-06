@@ -42,8 +42,9 @@ function logJsonParseWarning(options, message, snippet, hint) {
     if (options && typeof options.status === 'number') {
         console.warn('Status:', options.status);
     }
-    if (options && options.contentType) {
-        console.warn('Content-Type:', options.contentType);
+    if (options && 'contentType' in options) {
+        const contentType = options.contentType ? options.contentType : '(not provided)';
+        console.warn('Content-Type:', contentType);
     }
     console.warn(`Raw response (first ${JSON_ERROR_SNIPPET_MAX_LENGTH} chars):`, snippet);
 }
@@ -59,7 +60,7 @@ function safeJsonParse(raw, fallback, labelOrOptions) {
     const looksLikeMarkup = lowerPreview.startsWith('<!doctype')
         || lowerPreview.startsWith('<?xml')
         || lowerPreview.startsWith('<html')
-        || /^<\s*[a-z]/.test(lowerPreview);
+        || /^<\s*[a-z][a-z0-9-]*[\s>]/.test(lowerPreview);
     const snippet = normalized.length > JSON_ERROR_SNIPPET_MAX_LENGTH
         ? `${normalized.slice(0, JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET)}...`
         : normalized;
@@ -76,26 +77,52 @@ function safeJsonParse(raw, fallback, labelOrOptions) {
 }
 
 /**
- * Read a fetch/axios response as text, log diagnostics, and safely parse JSON.
- * @param {Response} response
+ * Read a fetch Response or axios response, log diagnostics, and safely parse JSON.
+ * @param {Response|{data?: *, status?: number, headers?: Object}} response
  * @param {*} fallback
  * @param {string} [label]
  * @returns {Promise<*>}
  */
+const INVALID_RESPONSE_MESSAGE = 'readJsonResponse expects a fetch Response or axios response.';
+
+function getResponseContentType(response) {
+    if (!response || !response.headers) return null;
+    if (typeof response.headers.get === 'function') {
+        return response.headers.get('content-type');
+    }
+    if (typeof response.headers === 'object' && response.headers['content-type']) {
+        return response.headers['content-type'];
+    }
+    return null;
+}
+
 async function readJsonResponse(response, fallback, label) {
-    if (!response || typeof response.text !== 'function') {
-        console.warn('readJsonResponse expects a fetch Response object.');
+    if (!response) {
+        console.warn(INVALID_RESPONSE_MESSAGE);
         return fallback;
     }
-    const text = await response.text();
-    const contentType = response.headers && typeof response.headers.get === 'function'
-        ? response.headers.get('content-type')
-        : '';
-    return safeJsonParse(text, fallback, {
-        label,
-        status: response.status,
-        contentType
-    });
+    const contentType = getResponseContentType(response);
+    if (typeof response.text === 'function') {
+        const text = await response.text();
+        return safeJsonParse(text, fallback, {
+            label,
+            status: response.status,
+            contentType
+        });
+    }
+    if (Object.prototype.hasOwnProperty.call(response, 'data')) {
+        const data = response.data;
+        if (typeof data === 'string') {
+            return safeJsonParse(data, fallback, {
+                label,
+                status: response.status,
+                contentType
+            });
+        }
+        return data == null ? fallback : data;
+    }
+    console.warn(INVALID_RESPONSE_MESSAGE);
+    return fallback;
 }
 
 if (typeof window !== 'undefined') {
