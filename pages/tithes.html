@@ -230,11 +230,16 @@
                     statusEl.textContent = '⚠️ No data rows found in the file.';
                     return;
                 }
-                const validTypes = ['Tithe', 'Offering', 'EFT', 'Donation'];
+                const typeAliases = {
+                    tithe: 'Tithe',
+                    offering: 'Offering',
+                    donation: 'EFT',
+                    eft: 'EFT'
+                };
                 const records = rows.map(row => {
                     const rawType = getRowField(row, ['type', 'contribution type', 'category']);
-                    const matchedType = validTypes.find(t => t.toLowerCase() === rawType.toLowerCase()) || 'Tithe';
-                    const type = normalizeContributionType(matchedType);
+                    const typeKey = (rawType || '').toLowerCase();
+                    const type = typeAliases[typeKey] || 'Tithe';
                     return {
                         member: getRowField(row, ['member', 'member name', 'name', 'donor']),
                         type,
