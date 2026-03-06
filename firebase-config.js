@@ -38,10 +38,13 @@ function safeJsonParse(raw, fallback, label) {
     try {
         return JSON.parse(normalized);
     } catch (err) {
-        const preview = normalized;
-        const hint = preview.startsWith('<') ? ' (content looks like XML/HTML)' : '';
+        const MAX_SNIPPET_LENGTH = 120;
+        const SNIPPET_TRUNCATE_LENGTH = 117;
+        const hint = normalized.startsWith('<') ? ' (content looks like XML/HTML)' : '';
         const target = label ? ` for ${label}` : '';
-        const snippet = preview.length > 120 ? `${preview.slice(0, 117)}...` : preview;
+        const snippet = normalized.length > MAX_SNIPPET_LENGTH
+            ? `${normalized.slice(0, SNIPPET_TRUNCATE_LENGTH)}...`
+            : normalized;
         console.warn(`Unable to parse JSON${target}${hint}:`, err.message, snippet);
         return fallback;
     }
