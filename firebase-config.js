@@ -23,6 +23,41 @@ let auth = null;
 let analytics = null;
 let functions = null;
 let firebaseInitialized = false;
+const JSON_ERROR_SNIPPET_MAX_LENGTH = 120;
+const JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET = 117;
+
+/**
+ * Safely parse JSON with a fallback value for invalid content or non-string input.
+ * Returns the fallback when input is not a non-empty string or JSON parsing fails.
+ * @param {string} raw
+ * @param {*} fallback
+ * @param {string} [label]
+ * @returns {*}
+ */
+function safeJsonParse(raw, fallback, label) {
+    if (typeof raw !== 'string') return fallback;
+    const normalized = raw.trim();
+    if (normalized === '') return fallback;
+    try {
+        return JSON.parse(normalized);
+    } catch (err) {
+        const lowerPreview = normalized.toLowerCase();
+        const looksLikeMarkup = lowerPreview.startsWith('<!doctype')
+            || lowerPreview.startsWith('<?xml')
+            || lowerPreview.startsWith('<html');
+        const hint = looksLikeMarkup ? ' (content looks like XML/HTML)' : '';
+        const target = label ? ` for ${label}` : '';
+        const snippet = normalized.length > JSON_ERROR_SNIPPET_MAX_LENGTH
+            ? `${normalized.slice(0, JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET)}...`
+            : normalized;
+        console.warn(`Unable to parse JSON${target}${hint}:`, err.message, snippet);
+        return fallback;
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.safeJsonParse = safeJsonParse;
+}
 
 function initializeFirebase() {
     if (typeof firebase !== 'undefined' && !firebaseInitialized) {
@@ -59,14 +94,14 @@ function saveToFirebase(collection, data) {
         }).catch((error) => {
             console.warn('Firestore save failed, using localStorage fallback:', error.message);
             const key = `charity_${collection}`;
-            const existing = JSON.parse(localStorage.getItem(key)) || [];
+            const existing = safeJsonParse(localStorage.getItem(key), [], key);
             existing.push(data);
             localStorage.setItem(key, JSON.stringify(existing));
         });
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const existing = JSON.parse(localStorage.getItem(key)) || [];
+        const existing = safeJsonParse(localStorage.getItem(key), [], key);
         existing.push(data);
         localStorage.setItem(key, JSON.stringify(existing));
         return Promise.resolve();
@@ -88,14 +123,14 @@ function loadFromFirebase(collection, callback) {
         }, (error) => {
             console.warn('Firestore load failed, using localStorage fallback:', error.message);
             const key = `charity_${collection}`;
-            const data = JSON.parse(localStorage.getItem(key)) || [];
+            const data = safeJsonParse(localStorage.getItem(key), [], key);
             const dataWithIds = data.map((item, index) => ({ _docId: index, ...item }));
             callback(dataWithIds);
         });
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         // _docId is the numeric index used for deletion; id comes from stored data
         const dataWithIds = data.map((item, index) => ({ _docId: index, ...item }));
         callback(dataWithIds);
@@ -111,7 +146,7 @@ function deleteFromFirebase(collection, id) {
     } else {
         // Fallback to localStorage or numeric ID
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         const numericId = typeof id === 'number' ? id : parseInt(id);
         const filtered = data.filter((item, index) => index !== numericId);
         localStorage.setItem(key, JSON.stringify(filtered));
@@ -127,7 +162,7 @@ function updateInFirebase(collection, id, updates) {
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         if (data[id]) {
             data[id] = { ...data[id], ...updates };
             localStorage.setItem(key, JSON.stringify(data));

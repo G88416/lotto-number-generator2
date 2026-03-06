@@ -243,9 +243,9 @@
         // Backup data
         document.getElementById('backup-data').addEventListener('click', () => {
             const collections = ['members', 'visitors', 'events', 'tithes', 'attendance', 'prayers', 'sermons', 'volunteers', 'leaders'];
-            const allData = { org_info: JSON.parse(localStorage.getItem('org_info')) || {} };
+            const allData = { org_info: safeJsonParse(localStorage.getItem('org_info'), {}, 'org_info') };
             collections.forEach(c => {
-                allData[c] = JSON.parse(localStorage.getItem(`charity_${c}`)) || [];
+                allData[c] = safeJsonParse(localStorage.getItem(`charity_${c}`), [], `charity_${c}`);
             });
             
             const blob = new Blob([JSON.stringify(allData, null, 2)], {type: 'application/json'});
@@ -267,7 +267,12 @@
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
-                        const data = JSON.parse(event.target.result);
+                        const raw = String(event.target.result || '').trim();
+                        const data = safeJsonParse(raw, null, 'backup file');
+                        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                            showToast('Selected file is not a valid JSON backup.', 'error');
+                            return;
+                        }
                         Object.keys(data).forEach(key => {
                             if (key === 'org_info') {
                                 localStorage.setItem(key, JSON.stringify(data[key]));
