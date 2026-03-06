@@ -96,7 +96,10 @@
         });
 
         const COLLECTION = 'volunteers';
+        const volunteerForm = document.getElementById('add-volunteer-form');
+        const volunteerSubmitBtn = volunteerForm.querySelector('button[type="submit"]');
         let allVolunteers = [];
+        let editingVolunteerId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#volunteers-table tbody');
@@ -110,6 +113,7 @@
             
             data.forEach((volunteer) => {
                 const row = document.createElement('tr');
+                const docId = volunteer._docId || volunteer.id;
                 row.innerHTML = `
                     <td>${escapeHtml(volunteer.name)}</td>
                     <td>${escapeHtml(volunteer.role)}</td>
@@ -117,9 +121,11 @@
                     <td>${escapeHtml(volunteer.email)}</td>
                     <td>${escapeHtml(volunteer.availability)}</td>
                     <td>
-                        <button class="btn-danger" onclick="deleteVolunteer('${escapeHtml(volunteer._docId || volunteer.id)}')">Delete</button>
+                        <button class="btn-secondary edit-action" data-action="edit-volunteer" data-id="${escapeHtml(docId)}">Edit</button>
+                        <button class="btn-danger" onclick="deleteVolunteer('${escapeHtml(docId)}')">Delete</button>
                     </td>
                 `;
+                row.querySelector('[data-action="edit-volunteer"]').addEventListener('click', () => editVolunteer(docId));
                 tbody.appendChild(row);
             });
         }
@@ -147,8 +153,30 @@
                 });
             }
         };
-        
-        document.getElementById('add-volunteer-form').addEventListener('submit', (e) => {
+
+        function resetVolunteerForm() {
+            editingVolunteerId = null;
+            volunteerSubmitBtn.textContent = 'Add Volunteer';
+        }
+
+        window.editVolunteer = function(id) {
+            const volunteer = allVolunteers.find(v => String(v._docId || v.id) === String(id));
+            if (!volunteer) {
+                showToast('Volunteer not found for editing.', 'warning');
+                return;
+            }
+            editingVolunteerId = id;
+            document.getElementById('volunteer-name').value = volunteer.name || '';
+            document.getElementById('volunteer-role').value = volunteer.role || '';
+            document.getElementById('volunteer-contact').value = volunteer.contact || '';
+            document.getElementById('volunteer-email').value = volunteer.email || '';
+            document.getElementById('volunteer-availability').value = volunteer.availability || '';
+            volunteerSubmitBtn.textContent = 'Update Volunteer';
+            volunteerForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing volunteer. Update details and submit to save.', 'info');
+        };
+
+        volunteerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const volunteerData = {
                 name: document.getElementById('volunteer-name').value,
@@ -157,11 +185,16 @@
                 email: document.getElementById('volunteer-email').value,
                 availability: document.getElementById('volunteer-availability').value
             };
-            
-            saveToFirebase(COLLECTION, volunteerData).then(() => {
+            const isEditing = Boolean(editingVolunteerId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingVolunteerId, volunteerData)
+                : saveToFirebase(COLLECTION, volunteerData);
+
+            action.then(() => {
                 e.target.reset();
+                resetVolunteerForm();
                 populateTable();
-                showToast('Volunteer added successfully!', 'success');
+                showToast(isEditing ? 'Volunteer updated successfully!' : 'Volunteer added successfully!', 'success');
             });
         });
         

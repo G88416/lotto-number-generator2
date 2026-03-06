@@ -99,7 +99,10 @@
         });
         
         const COLLECTION = 'visitors';
+        const visitorForm = document.getElementById('add-visitor-form');
+        const visitorSubmitBtn = visitorForm.querySelector('button[type="submit"]');
         let allVisitors = [];
+        let editingVisitorId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#visitors-table tbody');
@@ -113,6 +116,7 @@
             
             data.forEach((visitor) => {
                 const row = document.createElement('tr');
+                const docId = visitor._docId || visitor.id;
                 row.innerHTML = `
                     <td>${escapeHtml(visitor.name)}</td>
                     <td>${escapeHtml(visitor.email)}</td>
@@ -122,9 +126,11 @@
                     <td>${escapeHtml(visitor.branch)}</td>
                     <td>${escapeHtml(visitor.notes)}</td>
                     <td>
-                        <button class="btn-danger" onclick="deleteVisitor('${escapeHtml(visitor._docId || visitor.id)}')">Delete</button>
+                        <button class="btn-secondary edit-action" data-action="edit-visitor" data-id="${escapeHtml(docId)}">Edit</button>
+                        <button class="btn-danger" onclick="deleteVisitor('${escapeHtml(docId)}')">Delete</button>
                     </td>
                 `;
+                row.querySelector('[data-action="edit-visitor"]').addEventListener('click', () => editVisitor(docId));
                 tbody.appendChild(row);
             });
         }
@@ -153,8 +159,32 @@
                 });
             }
         };
-        
-        document.getElementById('add-visitor-form').addEventListener('submit', (e) => {
+
+        function resetVisitorForm() {
+            editingVisitorId = null;
+            visitorSubmitBtn.textContent = 'Add Visitor';
+        }
+
+        window.editVisitor = function(id) {
+            const visitor = allVisitors.find(v => String(v._docId || v.id) === String(id));
+            if (!visitor) {
+                showToast('Visitor not found for editing.', 'warning');
+                return;
+            }
+            editingVisitorId = id;
+            document.getElementById('visitor-name').value = visitor.name || '';
+            document.getElementById('visitor-email').value = visitor.email || '';
+            document.getElementById('visitor-cell').value = visitor.cell || '';
+            document.getElementById('visitor-address').value = visitor.address || '';
+            document.getElementById('visitor-date').value = visitor.date || '';
+            document.getElementById('visitor-branch').value = visitor.branch || '';
+            document.getElementById('visitor-notes').value = visitor.notes || '';
+            visitorSubmitBtn.textContent = 'Update Visitor';
+            visitorForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing visitor. Update details and submit to save.', 'info');
+        };
+
+        visitorForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const visitorData = {
                 name: document.getElementById('visitor-name').value,
@@ -165,11 +195,16 @@
                 branch: document.getElementById('visitor-branch').value,
                 notes: document.getElementById('visitor-notes').value
             };
-            
-            saveToFirebase(COLLECTION, visitorData).then(() => {
+            const isEditing = Boolean(editingVisitorId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingVisitorId, visitorData)
+                : saveToFirebase(COLLECTION, visitorData);
+
+            action.then(() => {
                 e.target.reset();
+                resetVisitorForm();
                 populateTable();
-                showToast('Visitor added successfully!', 'success');
+                showToast(isEditing ? 'Visitor updated successfully!' : 'Visitor added successfully!', 'success');
             });
         });
         

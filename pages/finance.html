@@ -491,6 +491,9 @@
            EXPENSES TAB
         ═══════════════════════════════════════════ */
         const EXP_COLLECTION = 'expenses';
+        const expenseForm = document.getElementById('add-expense-form');
+        const expenseSubmitBtn = expenseForm.querySelector('button[type="submit"]');
+        let editingExpenseId = null;
 
         function updateExpenseSummary(data) {
             const now = new Date();
@@ -531,9 +534,11 @@
                     <td>R ${parseFloat(e.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(e.approvedBy || '')}</td>
                     <td>
+                        <button class="btn-secondary edit-action" data-action="edit-expense" data-id="${escapeHtml(docId)}">Edit</button>
                         <button class="btn-danger" data-action="delete-expense">Delete</button>
                     </td>
                 `;
+                row.querySelector('[data-action="edit-expense"]').addEventListener('click', () => editExpense(docId));
                 row.querySelector('[data-action="delete-expense"]').addEventListener('click', () => deleteExpense(docId));
                 tbody.appendChild(row);
             });
@@ -556,7 +561,7 @@
             renderExpenses(filtered);
         });
 
-        document.getElementById('add-expense-form').addEventListener('submit', e => {
+        expenseForm.addEventListener('submit', e => {
             e.preventDefault();
             const data = {
                 description: document.getElementById('exp-description').value,
@@ -566,12 +571,41 @@
                 approvedBy:  document.getElementById('exp-approved-by').value,
                 notes:       document.getElementById('exp-notes').value
             };
-            saveToFirebase(EXP_COLLECTION, data).then(() => {
+            const isEditing = Boolean(editingExpenseId);
+            const action = isEditing
+                ? updateInFirebase(EXP_COLLECTION, editingExpenseId, data)
+                : saveToFirebase(EXP_COLLECTION, data);
+
+            action.then(() => {
                 e.target.reset();
-                showToast('Expense recorded successfully!', 'success');
+                resetExpenseForm();
+                showToast(isEditing ? 'Expense updated successfully!' : 'Expense recorded successfully!', 'success');
                 populateExpenses();
             });
         });
+
+        function resetExpenseForm() {
+            editingExpenseId = null;
+            expenseSubmitBtn.textContent = 'Record Expense';
+        }
+
+        function editExpense(id) {
+            const expense = allExpenses.find(exp => String(exp._docId || exp.id) === String(id));
+            if (!expense) {
+                showToast('Expense record not found for editing.', 'warning');
+                return;
+            }
+            editingExpenseId = id;
+            document.getElementById('exp-description').value = expense.description || '';
+            document.getElementById('exp-category').value = expense.category || '';
+            document.getElementById('exp-amount').value = expense.amount || '';
+            document.getElementById('exp-date').value = expense.date || '';
+            document.getElementById('exp-approved-by').value = expense.approvedBy || '';
+            document.getElementById('exp-notes').value = expense.notes || '';
+            expenseSubmitBtn.textContent = 'Update Expense';
+            expenseForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing expense. Update details and submit to save.', 'info');
+        }
 
         function deleteExpense(id) {
             if (confirm('Are you sure you want to delete this expense?')) {
@@ -586,7 +620,11 @@
            PAYMENT REQUISITIONS TAB
         ═══════════════════════════════════════════ */
         const REQ_COLLECTION = 'payment_requisitions';
+        const requisitionForm = document.getElementById('add-requisition-form');
+        const requisitionSubmitBtn = requisitionForm.querySelector('button[type="submit"]');
         let allRequisitions = [];
+        let editingRequisitionId = null;
+        let editingRequisitionOriginalData = null;
 
         function renderRequisitions(data) {
             const tbody = document.getElementById('requisitions-tbody');
@@ -623,6 +661,7 @@
                     <td>${escapeHtml(r.payee || '')}</td>
                     <td><span class="badge ${statusClass}">${escapeHtml(r.status || 'Pending')}</span></td>
                     <td>
+                        <button class="btn-secondary edit-action" data-action="edit-req" style="font-size:12px;padding:5px 10px;">Edit</button>
                         ${r.status === 'Pending' ? `
                         <button class="btn-secondary" data-action="approve-req" style="font-size:12px;padding:5px 10px;">Approve</button>
                         <button class="btn-danger"    data-action="reject-req"  style="font-size:12px;padding:5px 10px;">Reject</button>
@@ -632,6 +671,7 @@
                 `;
                 const approveBtn = row.querySelector('[data-action="approve-req"]');
                 const rejectBtn  = row.querySelector('[data-action="reject-req"]');
+                row.querySelector('[data-action="edit-req"]').addEventListener('click', () => editRequisition(docId));
                 if (approveBtn) approveBtn.addEventListener('click', () => updateReqStatus(docId, 'Approved'));
                 if (rejectBtn)  rejectBtn.addEventListener('click',  () => updateReqStatus(docId, 'Rejected'));
                 row.querySelector('[data-action="delete-req"]').addEventListener('click', () => deleteRequisition(docId));
@@ -661,7 +701,7 @@
             });
         }
 
-        document.getElementById('add-requisition-form').addEventListener('submit', e => {
+        requisitionForm.addEventListener('submit', e => {
             e.preventDefault();
             const data = {
                 requestor:    document.getElementById('req-requestor').value,
@@ -671,16 +711,68 @@
                 amount:       document.getElementById('req-amount').value,
                 dateRequired: document.getElementById('req-date-required').value,
                 payee:        document.getElementById('req-payee').value,
-                description:  document.getElementById('req-description').value,
-                status:       'Pending',
-                submittedAt:  new Date().toISOString()
+                description:  document.getElementById('req-description').value
             };
-            saveToFirebase(REQ_COLLECTION, data).then(() => {
+            const isEditing = Boolean(editingRequisitionId);
+            let action;
+            if (isEditing) {
+                if (!editingRequisitionOriginalData) {
+                    action = Promise.reject(new Error('Unable to locate requisition details. Please try editing again.'));
+                } else {
+                    action = updateInFirebase(REQ_COLLECTION, editingRequisitionId, {
+                        ...data,
+                        status: editingRequisitionOriginalData.status,
+                        ...(editingRequisitionOriginalData.submittedAt ? { submittedAt: editingRequisitionOriginalData.submittedAt } : {})
+                    });
+                }
+            } else {
+                action = saveToFirebase(REQ_COLLECTION, {
+                    ...data,
+                    status: 'Pending',
+                    submittedAt: new Date().toISOString()
+                });
+            }
+
+            action.then(() => {
                 e.target.reset();
-                showToast('Payment requisition submitted successfully!', 'success');
+                resetRequisitionForm();
+                showToast(isEditing ? 'Requisition updated successfully!' : 'Payment requisition submitted successfully!', 'success');
                 populateRequisitions();
+            }).catch((err) => {
+                showToast(err.message || 'Unable to save requisition. Please try again.', 'error');
+                resetRequisitionForm();
             });
         });
+
+        function resetRequisitionForm() {
+            editingRequisitionId = null;
+            editingRequisitionOriginalData = null;
+            requisitionSubmitBtn.textContent = 'Submit Requisition';
+        }
+
+        function editRequisition(id) {
+            const requisition = allRequisitions.find(r => String(r._docId || r.id) === String(id));
+            if (!requisition) {
+                showToast('Requisition not found for editing.', 'warning');
+                return;
+            }
+            editingRequisitionId = id;
+            editingRequisitionOriginalData = {
+                status: requisition.status || 'Pending',
+                submittedAt: requisition.submittedAt || null
+            };
+            document.getElementById('req-requestor').value = requisition.requestor || '';
+            document.getElementById('req-department').value = requisition.department || '';
+            document.getElementById('req-purpose').value = requisition.purpose || '';
+            document.getElementById('req-category').value = requisition.category || '';
+            document.getElementById('req-amount').value = requisition.amount || '';
+            document.getElementById('req-date-required').value = requisition.dateRequired || '';
+            document.getElementById('req-payee').value = requisition.payee || '';
+            document.getElementById('req-description').value = requisition.description || '';
+            requisitionSubmitBtn.textContent = 'Update Requisition';
+            requisitionForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing requisition. Update details and submit to save.', 'info');
+        }
 
         function updateReqStatus(id, status) {
             const label = status === 'Approved' ? 'approve' : 'reject';

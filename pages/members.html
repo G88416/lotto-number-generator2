@@ -115,7 +115,10 @@
         });
         
         const COLLECTION = 'members';
+        const memberForm = document.getElementById('add-member-form');
+        const memberSubmitBtn = memberForm.querySelector('button[type="submit"]');
         let allMembers = [];
+        let editingMemberId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#members-table tbody');
@@ -129,6 +132,7 @@
             
             data.forEach((member) => {
                 const row = document.createElement('tr');
+                const docId = member._docId;
                 row.innerHTML = `
                     <td>${escapeHtml(member.name)}</td>
                     <td>${escapeHtml(member.surname)}</td>
@@ -139,9 +143,11 @@
                     <td>${escapeHtml(member.email)}</td>
                     <td>${escapeHtml(member.branch)}</td>
                     <td>
-                        <button class="btn-danger" onclick="deleteMember('${escapeHtml(member._docId)}')">Delete</button>
+                        <button class="btn-secondary edit-action" data-action="edit-member" data-id="${escapeHtml(docId)}">Edit</button>
+                        <button class="btn-danger" onclick="deleteMember('${escapeHtml(docId)}')">Delete</button>
                     </td>
                 `;
+                row.querySelector('[data-action="edit-member"]').addEventListener('click', () => editMember(docId));
                 tbody.appendChild(row);
             });
         }
@@ -170,8 +176,33 @@
                 });
             }
         };
-        
-        document.getElementById('add-member-form').addEventListener('submit', (e) => {
+
+        function resetMemberForm() {
+            editingMemberId = null;
+            memberSubmitBtn.textContent = 'Add Member';
+        }
+
+        window.editMember = function(docId) {
+            const member = allMembers.find(m => String(m._docId || m.id) === String(docId));
+            if (!member) {
+                showToast('Member not found for editing.', 'warning');
+                return;
+            }
+            editingMemberId = docId;
+            document.getElementById('member-name').value = member.name || '';
+            document.getElementById('member-surname').value = member.surname || '';
+            document.getElementById('member-id').value = member.id || '';
+            document.getElementById('member-gender').value = member.gender || '';
+            document.getElementById('member-age').value = member.age || '';
+            document.getElementById('member-cell').value = member.cell || '';
+            document.getElementById('member-email').value = member.email || '';
+            document.getElementById('member-branch').value = member.branch || '';
+            memberSubmitBtn.textContent = 'Update Member';
+            memberForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing member. Update details and submit to save.', 'info');
+        };
+
+        memberForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const memberData = {
                 name: document.getElementById('member-name').value,
@@ -183,11 +214,16 @@
                 email: document.getElementById('member-email').value,
                 branch: document.getElementById('member-branch').value
             };
-            
-            saveToFirebase(COLLECTION, memberData).then(() => {
+            const isEditing = Boolean(editingMemberId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingMemberId, memberData)
+                : saveToFirebase(COLLECTION, memberData);
+
+            action.then(() => {
                 e.target.reset();
+                resetMemberForm();
                 populateTable();
-                showToast('Member added successfully!', 'success');
+                showToast(isEditing ? 'Member updated successfully!' : 'Member added successfully!', 'success');
             });
         });
         

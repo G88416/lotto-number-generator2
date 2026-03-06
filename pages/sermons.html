@@ -100,7 +100,10 @@
         });
 
         const COLLECTION = 'sermons';
+        const sermonForm = document.getElementById('add-sermon-form');
+        const sermonSubmitBtn = sermonForm.querySelector('button[type="submit"]');
         let allSermons = [];
+        let editingSermonId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#sermons-table tbody');
@@ -114,6 +117,7 @@
             
             data.forEach((sermon) => {
                 const row = document.createElement('tr');
+                const docId = sermon._docId || sermon.id;
                 const linkHtml = sermon.link
                     ? `<a href="${escapeHtml(sermon.link)}" target="_blank" rel="noopener noreferrer">▶ View</a>`
                     : '—';
@@ -124,9 +128,11 @@
                     <td>${linkHtml}</td>
                     <td>${escapeHtml(sermon.notes)}</td>
                     <td>
-                        <button class="btn-danger" onclick="deleteSermon('${escapeHtml(sermon._docId || sermon.id)}')">Delete</button>
+                        <button class="btn-secondary edit-action" data-action="edit-sermon" data-id="${escapeHtml(docId)}">Edit</button>
+                        <button class="btn-danger" onclick="deleteSermon('${escapeHtml(docId)}')">Delete</button>
                     </td>
                 `;
+                row.querySelector('[data-action="edit-sermon"]').addEventListener('click', () => editSermon(docId));
                 tbody.appendChild(row);
             });
         }
@@ -154,8 +160,30 @@
                 });
             }
         };
-        
-        document.getElementById('add-sermon-form').addEventListener('submit', (e) => {
+
+        function resetSermonForm() {
+            editingSermonId = null;
+            sermonSubmitBtn.textContent = 'Add Sermon';
+        }
+
+        window.editSermon = function(id) {
+            const sermon = allSermons.find(s => String(s._docId || s.id) === String(id));
+            if (!sermon) {
+                showToast('Sermon not found for editing.', 'warning');
+                return;
+            }
+            editingSermonId = id;
+            document.getElementById('sermon-title').value = sermon.title || '';
+            document.getElementById('sermon-speaker').value = sermon.speaker || '';
+            document.getElementById('sermon-date').value = sermon.date || '';
+            document.getElementById('sermon-link').value = sermon.link || '';
+            document.getElementById('sermon-notes').value = sermon.notes || '';
+            sermonSubmitBtn.textContent = 'Update Sermon';
+            sermonForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing sermon. Update details and submit to save.', 'info');
+        };
+
+        sermonForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const sermonData = {
                 title: document.getElementById('sermon-title').value,
@@ -164,11 +192,16 @@
                 link: document.getElementById('sermon-link').value,
                 notes: document.getElementById('sermon-notes').value
             };
-            
-            saveToFirebase(COLLECTION, sermonData).then(() => {
+            const isEditing = Boolean(editingSermonId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingSermonId, sermonData)
+                : saveToFirebase(COLLECTION, sermonData);
+
+            action.then(() => {
                 e.target.reset();
+                resetSermonForm();
                 populateTable();
-                showToast('Sermon added successfully!', 'success');
+                showToast(isEditing ? 'Sermon updated successfully!' : 'Sermon added successfully!', 'success');
             });
         });
         

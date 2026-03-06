@@ -175,6 +175,17 @@ function applyEditPermissions() {
     }
 }
 
+const BUTTON_SCAN_DELAY = 200;
+
+/** Collect buttons from a DOM node for permission checks. */
+function collectButtons(node) {
+    if (!node || node.nodeType !== 1) return [];
+    const isButton = typeof node.matches === 'function'
+        ? node.matches('button')
+        : node.tagName === 'BUTTON';
+    return isButton ? [node] : Array.from(node.querySelectorAll('button'));
+}
+
 /** Observe DOM mutations and disable delete buttons when the user cannot delete. */
 function protectDeleteButtons() {
     if (!canDelete()) {
@@ -191,17 +202,42 @@ function protectDeleteButtons() {
         const observer = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
                 mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) {
-                        const btns = node.querySelectorAll
-                            ? node.querySelectorAll('button')
-                            : (node.tagName === 'BUTTON' ? [node] : []);
-                        btns.forEach(disableBtn);
-                    }
+                    collectButtons(node).forEach(disableBtn);
                 });
             });
         });
         observer.observe(document.body, { childList: true, subtree: true });
-        setTimeout(() => document.querySelectorAll('button').forEach(disableBtn), 500);
+        setTimeout(() => {
+            document.querySelectorAll('button').forEach(disableBtn);
+        }, BUTTON_SCAN_DELAY);
+    }
+}
+
+/** Disable edit buttons when the user cannot edit. */
+function protectEditButtons() {
+    if (!canEdit()) {
+        const disableBtn = btn => {
+            const action = btn.dataset ? btn.dataset.action : '';
+            if (btn.classList.contains('edit-action') || btn.classList.contains('edit-user-btn') ||
+                (action && action.includes('edit'))) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'You do not have permission to edit items';
+                btn.onclick = null;
+            }
+        };
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    collectButtons(node).forEach(disableBtn);
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => {
+            document.querySelectorAll('button').forEach(disableBtn);
+        }, BUTTON_SCAN_DELAY);
     }
 }
 
@@ -225,6 +261,7 @@ function _applyAuthUI() {
     filterNavigation();
     updateHeaderWithUser();
     applyEditPermissions();
+    protectEditButtons();
     protectDeleteButtons();
 }
 
