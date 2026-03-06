@@ -24,6 +24,19 @@ let analytics = null;
 let functions = null;
 let firebaseInitialized = false;
 
+function safeJsonParse(raw, fallback, label) {
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch (err) {
+        const preview = String(raw).trim();
+        const hint = preview.startsWith('<') ? ' (content looks like XML/HTML)' : '';
+        const target = label ? ` for ${label}` : '';
+        console.warn(`Unable to parse JSON${target}${hint}:`, err.message);
+        return fallback;
+    }
+}
+
 function initializeFirebase() {
     if (typeof firebase !== 'undefined' && !firebaseInitialized) {
         firebase.initializeApp(firebaseConfig);
@@ -59,14 +72,14 @@ function saveToFirebase(collection, data) {
         }).catch((error) => {
             console.warn('Firestore save failed, using localStorage fallback:', error.message);
             const key = `charity_${collection}`;
-            const existing = JSON.parse(localStorage.getItem(key)) || [];
+            const existing = safeJsonParse(localStorage.getItem(key), [], key);
             existing.push(data);
             localStorage.setItem(key, JSON.stringify(existing));
         });
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const existing = JSON.parse(localStorage.getItem(key)) || [];
+        const existing = safeJsonParse(localStorage.getItem(key), [], key);
         existing.push(data);
         localStorage.setItem(key, JSON.stringify(existing));
         return Promise.resolve();
@@ -88,14 +101,14 @@ function loadFromFirebase(collection, callback) {
         }, (error) => {
             console.warn('Firestore load failed, using localStorage fallback:', error.message);
             const key = `charity_${collection}`;
-            const data = JSON.parse(localStorage.getItem(key)) || [];
+            const data = safeJsonParse(localStorage.getItem(key), [], key);
             const dataWithIds = data.map((item, index) => ({ _docId: index, ...item }));
             callback(dataWithIds);
         });
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         // _docId is the numeric index used for deletion; id comes from stored data
         const dataWithIds = data.map((item, index) => ({ _docId: index, ...item }));
         callback(dataWithIds);
@@ -111,7 +124,7 @@ function deleteFromFirebase(collection, id) {
     } else {
         // Fallback to localStorage or numeric ID
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         const numericId = typeof id === 'number' ? id : parseInt(id);
         const filtered = data.filter((item, index) => index !== numericId);
         localStorage.setItem(key, JSON.stringify(filtered));
@@ -127,7 +140,7 @@ function updateInFirebase(collection, id, updates) {
     } else {
         // Fallback to localStorage
         const key = `charity_${collection}`;
-        const data = JSON.parse(localStorage.getItem(key)) || [];
+        const data = safeJsonParse(localStorage.getItem(key), [], key);
         if (data[id]) {
             data[id] = { ...data[id], ...updates };
             localStorage.setItem(key, JSON.stringify(data));
