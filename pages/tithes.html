@@ -45,7 +45,7 @@
     </nav>
     
     <main>
-        <h2>💰 Tithes &amp; Offerings</h2>
+        <h2>🌍 Tithes &amp; Offerings</h2>
         <p>Track financial contributions to your organization.</p>
         
         <form id="add-tithe-form">
@@ -55,7 +55,7 @@
             <select id="tithe-type">
                 <option value="Tithe">Tithe</option>
                 <option value="Offering">Offering</option>
-                <option value="Donation">Donation</option>
+                <option value="EFT">EFT</option>
             </select></div>
             <div class="form-row"><label for="tithe-amount">Amount *</label>
             <input type="number" id="tithe-amount" placeholder="Amount" required step="0.01" min="0" inputmode="decimal"></div>
@@ -74,7 +74,7 @@
                 <span id="sum-offering">R 0.00</span>Offerings
             </div>
             <div class="summary-item" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <span id="sum-donation">R 0.00</span>Donations
+                <span id="sum-eft">R 0.00</span>EFT
             </div>
             <div class="summary-item" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 <span id="sum-total">R 0.00</span>Total
@@ -120,17 +120,27 @@
         const COLLECTION = 'tithes';
         let allTithes = [];
 
+        function normalizeContributionType(type) {
+            const normalized = (type || '').toString().trim();
+            if (!normalized) return 'EFT';
+            const lowered = normalized.toLowerCase();
+            if (lowered === 'donation' || lowered === 'eft') return 'EFT';
+            if (lowered === 'tithe') return 'Tithe';
+            if (lowered === 'offering') return 'Offering';
+            return 'EFT';
+        }
+
         function updateSummary(data) {
-            const sums = { Tithe: 0, Offering: 0, Donation: 0 };
+            const sums = { Tithe: 0, Offering: 0, EFT: 0 };
             data.forEach(t => {
                 const amt = parseFloat(t.amount) || 0;
-                const type = t.type && sums[t.type] !== undefined ? t.type : 'Donation';
+                const type = normalizeContributionType(t.type);
                 sums[type] += amt;
             });
-            const total = sums.Tithe + sums.Offering + sums.Donation;
+            const total = sums.Tithe + sums.Offering + sums.EFT;
             document.getElementById('sum-tithe').textContent    = 'R ' + sums.Tithe.toFixed(2);
             document.getElementById('sum-offering').textContent = 'R ' + sums.Offering.toFixed(2);
-            document.getElementById('sum-donation').textContent = 'R ' + sums.Donation.toFixed(2);
+            document.getElementById('sum-eft').textContent = 'R ' + sums.EFT.toFixed(2);
             document.getElementById('sum-total').textContent    = 'R ' + total.toFixed(2);
         }
         
@@ -147,9 +157,10 @@
             
             data.forEach((tithe) => {
                 const row = document.createElement('tr');
+                const displayType = normalizeContributionType(tithe.type);
                 row.innerHTML = `
                     <td>${escapeHtml(tithe.member)}</td>
-                    <td>${escapeHtml(tithe.type)}</td>
+                    <td>${escapeHtml(displayType)}</td>
                     <td>R ${parseFloat(tithe.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(formatDate(tithe.date))}</td>
                     <td>${escapeHtml(tithe.branch)}</td>
@@ -171,7 +182,7 @@
         document.getElementById('tithe-search').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             const filtered = allTithes.filter(t =>
-                [t.member, t.type, t.branch].some(v => (v || '').toLowerCase().includes(term))
+                [t.member, normalizeContributionType(t.type), t.branch].some(v => (v || '').toLowerCase().includes(term))
             );
             renderTable(filtered);
         });
@@ -219,10 +230,11 @@
                     statusEl.textContent = '⚠️ No data rows found in the file.';
                     return;
                 }
-                const validTypes = ['Tithe', 'Offering', 'Donation'];
+                const validTypes = ['Tithe', 'Offering', 'EFT', 'Donation'];
                 const records = rows.map(row => {
                     const rawType = getRowField(row, ['type', 'contribution type', 'category']);
-                    const type = validTypes.find(t => t.toLowerCase() === rawType.toLowerCase()) || 'Tithe';
+                    const matchedType = validTypes.find(t => t.toLowerCase() === rawType.toLowerCase()) || 'Tithe';
+                    const type = normalizeContributionType(matchedType);
                     return {
                         member: getRowField(row, ['member', 'member name', 'name', 'donor']),
                         type,

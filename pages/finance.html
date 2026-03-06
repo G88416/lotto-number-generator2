@@ -127,7 +127,7 @@
                     <span id="income-total-offering">R 0.00</span>Total Offerings
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);">
-                    <span id="income-total-donation">R 0.00</span>Total Donations
+                    <span id="income-total-eft">R 0.00</span>Total EFT
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);">
                     <span id="income-grand-total">R 0.00</span>Grand Total
@@ -140,7 +140,7 @@
                         <th>Month</th>
                         <th>Tithes (R)</th>
                         <th>Offerings (R)</th>
-                        <th>Donations (R)</th>
+                        <th>EFT (R)</th>
                         <th>Total Income (R)</th>
                         <th>Total Expenses (R)</th>
                         <th>Net Balance (R)</th>
@@ -371,7 +371,13 @@
         }
 
         function normalizeIncomeType(type) {
-            return ['Tithe','Offering','Donation'].includes(type) ? type : 'Donation';
+            const normalized = (type || '').toString().trim();
+            if (!normalized) return 'EFT';
+            const lowered = normalized.toLowerCase();
+            if (lowered === 'donation' || lowered === 'eft') return 'EFT';
+            if (lowered === 'tithe') return 'Tithe';
+            if (lowered === 'offering') return 'Offering';
+            return 'EFT';
         }
 
         function renderIncomeTable() {
@@ -383,7 +389,7 @@
                 const key = getMonthKey(t.date);
                 if (!key) return;
                 if (yearFilter && !key.startsWith(yearFilter)) return;
-                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, Donation:0 };
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, EFT:0 };
                 const amt = parseFloat(t.amount) || 0;
                 const type = normalizeIncomeType(t.type);
                 incomeByMonth[key][type] += amt;
@@ -413,8 +419,8 @@
             }
 
             sortedKeys.forEach(key => {
-                const income = incomeByMonth[key] || { Tithe:0, Offering:0, Donation:0 };
-                const totalIncome = income.Tithe + income.Offering + income.Donation;
+                const income = incomeByMonth[key] || { Tithe:0, Offering:0, EFT:0 };
+                const totalIncome = income.Tithe + income.Offering + income.EFT;
                 const totalExp = expenseByMonth[key] || 0;
                 const net = totalIncome - totalExp;
                 const [year, month] = key.split('-');
@@ -425,7 +431,7 @@
                     <td class="month-label">${escapeHtml(label)}</td>
                     <td>R ${income.Tithe.toFixed(2)}</td>
                     <td>R ${income.Offering.toFixed(2)}</td>
-                    <td>R ${income.Donation.toFixed(2)}</td>
+                    <td>R ${income.EFT.toFixed(2)}</td>
                     <td>R ${totalIncome.toFixed(2)}</td>
                     <td>R ${totalExp.toFixed(2)}</td>
                     <td class="${netClass}">R ${net.toFixed(2)}</td>
@@ -434,7 +440,7 @@
             });
 
             updateIncomeSummary(sortedKeys.map(k => ({
-                income: incomeByMonth[k] || { Tithe:0, Offering:0, Donation:0 }
+                income: incomeByMonth[k] || { Tithe:0, Offering:0, EFT:0 }
             })));
         }
 
@@ -444,16 +450,16 @@
                 const yearFilter = document.getElementById('income-year-filter').value;
                 return key && (!yearFilter || key.startsWith(yearFilter));
             });
-            const sums = { Tithe:0, Offering:0, Donation:0 };
+            const sums = { Tithe:0, Offering:0, EFT:0 };
             filtered.forEach(t => {
                 const amt = parseFloat(t.amount) || 0;
                 const type = normalizeIncomeType(t.type);
                 sums[type] += amt;
             });
-            const total = sums.Tithe + sums.Offering + sums.Donation;
+            const total = sums.Tithe + sums.Offering + sums.EFT;
             document.getElementById('income-total-tithe').textContent    = 'R ' + sums.Tithe.toFixed(2);
             document.getElementById('income-total-offering').textContent = 'R ' + sums.Offering.toFixed(2);
-            document.getElementById('income-total-donation').textContent = 'R ' + sums.Donation.toFixed(2);
+            document.getElementById('income-total-eft').textContent = 'R ' + sums.EFT.toFixed(2);
             document.getElementById('income-grand-total').textContent    = 'R ' + total.toFixed(2);
         }
 
