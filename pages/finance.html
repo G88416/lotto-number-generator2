@@ -124,7 +124,7 @@
                     <span id="income-total-tithe">R 0.00</span>Total Tithes
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#56ab2f 0%,#a8e063 100%);">
-                    <span id="income-total-offering">R 0.00</span>Total Offerings
+                    <span id="income-total-offering">R 0.00</span>Total Missions Offering
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);">
                     <span id="income-total-eft">R 0.00</span>Total EFT
@@ -139,7 +139,7 @@
                     <tr>
                         <th>Month</th>
                         <th>Tithes (R)</th>
-                        <th>Offerings (R)</th>
+                        <th>Missions Offering (R)</th>
                         <th>EFT (R)</th>
                         <th>Total Income (R)</th>
                         <th>Total Expenses (R)</th>
@@ -376,7 +376,7 @@
             const lowered = normalized.toLowerCase();
             if (lowered === 'donation' || lowered === 'eft') return 'EFT';
             if (lowered === 'tithe') return 'Tithe';
-            if (lowered === 'offering') return 'Offering';
+            if (lowered === 'offering' || lowered === 'missions offering' || lowered === 'mission offering') return 'Offering';
             return 'EFT';
         }
 
