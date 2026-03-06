@@ -32,9 +32,9 @@ let firebaseInitialized = false;
  * @returns {*}
  */
 function safeJsonParse(raw, fallback, label) {
-    const normalized = typeof raw === 'string' ? raw.trim() : raw;
-    if (normalized === null || normalized === undefined) return fallback;
-    if (typeof normalized !== 'string' || normalized === '') return fallback;
+    if (typeof raw !== 'string') return fallback;
+    const normalized = raw.trim();
+    if (normalized === '') return fallback;
     try {
         return JSON.parse(normalized);
     } catch (err) {
