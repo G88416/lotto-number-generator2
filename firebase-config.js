@@ -38,7 +38,7 @@ function safeJsonParse(raw, fallback, label) {
     try {
         return JSON.parse(normalized);
     } catch (err) {
-        const preview = String(normalized).trim();
+        const preview = normalized;
         const hint = preview.startsWith('<') ? ' (content looks like XML/HTML)' : '';
         const target = label ? ` for ${label}` : '';
         const snippet = preview.length > 120 ? `${preview.slice(0, 117)}...` : preview;
