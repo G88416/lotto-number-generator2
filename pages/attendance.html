@@ -104,9 +104,14 @@
         });
 
         const COLLECTION = 'attendance';
+        const attendanceForm = document.getElementById('log-attendance-form');
+        const attendanceSubmitBtn = attendanceForm.querySelector('button[type="submit"]');
+        let allAttendance = [];
+        let editingAttendanceId = null;
         
         function populateTable() {
             loadFromFirebase(COLLECTION, (data) => {
+                allAttendance = data;
                 const tbody = document.querySelector('#attendance-table tbody');
                 tbody.innerHTML = '';
                 updateRecordCount('att-count', data.length);
@@ -132,6 +137,7 @@
                             <td>${sunday}</td>
                             <td><strong>${total}</strong></td>
                             <td>
+                                <button class="btn-secondary" onclick="editAttendance('${escapeHtml(record._docId || record.id)}')">Edit</button>
                                 <button class="btn-danger" onclick="deleteAttendance('${escapeHtml(record._docId || record.id)}')">Delete</button>
                             </td>
                         `;
@@ -154,8 +160,30 @@
                 });
             }
         };
-        
-        document.getElementById('log-attendance-form').addEventListener('submit', (e) => {
+
+        function resetAttendanceForm() {
+            editingAttendanceId = null;
+            attendanceSubmitBtn.textContent = 'Log Attendance';
+        }
+
+        window.editAttendance = function(id) {
+            const record = allAttendance.find(r => String(r._docId || r.id) === String(id));
+            if (!record) {
+                showToast('Attendance record not found for editing.', 'warning');
+                return;
+            }
+            editingAttendanceId = id;
+            document.getElementById('attendance-branch').value = record.branch || '';
+            document.getElementById('attendance-date').value = record.date || '';
+            document.getElementById('attendance-youth').value = record.youth || '';
+            document.getElementById('attendance-adult').value = record.adult || '';
+            document.getElementById('attendance-sunday').value = record.sunday || '';
+            attendanceSubmitBtn.textContent = 'Update Attendance';
+            attendanceForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing attendance. Update details and submit to save.', 'info');
+        };
+
+        attendanceForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const youth = parseInt(document.getElementById('attendance-youth').value) || 0;
             const adult = parseInt(document.getElementById('attendance-adult').value) || 0;
@@ -167,11 +195,16 @@
                 youth, adult, sunday,
                 total: youth + adult + sunday
             };
-            
-            saveToFirebase(COLLECTION, attendanceData).then(() => {
+            const isEditing = Boolean(editingAttendanceId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingAttendanceId, attendanceData)
+                : saveToFirebase(COLLECTION, attendanceData);
+
+            action.then(() => {
                 e.target.reset();
+                resetAttendanceForm();
                 populateTable();
-                showToast('Attendance logged successfully!', 'success');
+                showToast(isEditing ? 'Attendance updated successfully!' : 'Attendance logged successfully!', 'success');
             });
         });
         

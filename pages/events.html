@@ -100,7 +100,10 @@
         });
 
         const COLLECTION = 'events';
+        const eventForm = document.getElementById('add-event-form');
+        const eventSubmitBtn = eventForm.querySelector('button[type="submit"]');
         let allEvents = [];
+        let editingEventId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#events-table tbody');
@@ -121,6 +124,7 @@
                     <td>${escapeHtml(event.branch)}</td>
                     <td>${escapeHtml(event.organizer)}</td>
                     <td>
+                        <button class="btn-secondary" onclick="editEvent('${escapeHtml(event._docId || event.id)}')">Edit</button>
                         <button class="btn-danger" onclick="deleteEvent('${escapeHtml(event._docId || event.id)}')">Delete</button>
                     </td>
                 `;
@@ -151,8 +155,30 @@
                 });
             }
         };
-        
-        document.getElementById('add-event-form').addEventListener('submit', (e) => {
+
+        function resetEventForm() {
+            editingEventId = null;
+            eventSubmitBtn.textContent = 'Add Event';
+        }
+
+        window.editEvent = function(id) {
+            const event = allEvents.find(ev => String(ev._docId || ev.id) === String(id));
+            if (!event) {
+                showToast('Event not found for editing.', 'warning');
+                return;
+            }
+            editingEventId = id;
+            document.getElementById('event-title').value = event.title || '';
+            document.getElementById('event-desc').value = event.desc || '';
+            document.getElementById('event-date').value = event.date || '';
+            document.getElementById('event-branch').value = event.branch || '';
+            document.getElementById('event-organizer').value = event.organizer || '';
+            eventSubmitBtn.textContent = 'Update Event';
+            eventForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing event. Update details and submit to save.', 'info');
+        };
+
+        eventForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const eventData = {
                 title: document.getElementById('event-title').value,
@@ -161,11 +187,16 @@
                 branch: document.getElementById('event-branch').value,
                 organizer: document.getElementById('event-organizer').value
             };
-            
-            saveToFirebase(COLLECTION, eventData).then(() => {
+            const isEditing = Boolean(editingEventId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingEventId, eventData)
+                : saveToFirebase(COLLECTION, eventData);
+
+            action.then(() => {
                 e.target.reset();
+                resetEventForm();
                 populateTable();
-                showToast('Event added successfully!', 'success');
+                showToast(isEditing ? 'Event updated successfully!' : 'Event added successfully!', 'success');
             });
         });
         

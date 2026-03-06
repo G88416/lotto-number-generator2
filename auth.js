@@ -205,6 +205,36 @@ function protectDeleteButtons() {
     }
 }
 
+/** Disable edit buttons when the user cannot edit. */
+function protectEditButtons() {
+    if (!canEdit()) {
+        const disableBtn = btn => {
+            if (btn.textContent.includes('Edit') || btn.classList.contains('edit-user-btn') ||
+                (btn.onclick && btn.onclick.toString().includes('edit'))) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'You do not have permission to edit items';
+                btn.onclick = null;
+            }
+        };
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) {
+                        const btns = node.querySelectorAll
+                            ? node.querySelectorAll('button')
+                            : (node.tagName === 'BUTTON' ? [node] : []);
+                        btns.forEach(disableBtn);
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => document.querySelectorAll('button').forEach(disableBtn), 500);
+    }
+}
+
 /** Show the logged-in user's name and role in the page header. */
 function updateHeaderWithUser() {
     const user = getCurrentUser();
@@ -225,6 +255,7 @@ function _applyAuthUI() {
     filterNavigation();
     updateHeaderWithUser();
     applyEditPermissions();
+    protectEditButtons();
     protectDeleteButtons();
 }
 

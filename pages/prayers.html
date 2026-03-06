@@ -96,7 +96,10 @@
         });
 
         const COLLECTION = 'prayers';
+        const prayerForm = document.getElementById('add-prayer-form');
+        const prayerSubmitBtn = prayerForm.querySelector('button[type="submit"]');
         let allPrayers = [];
+        let editingPrayerId = null;
 
         const statusBadge = {
             Pending:  '<span class="badge badge-pending">Pending</span>',
@@ -133,6 +136,7 @@
                             <option value="Praying" ${prayer.status==='Praying'?'selected':''}>Praying</option>
                             <option value="Answered" ${prayer.status==='Answered'?'selected':''}>Answered</option>
                         </select>
+                        <button class="btn-secondary" onclick="editPrayer('${escapeHtml(docId)}')" style="margin-top:4px;">Edit</button>
                         <button class="btn-danger" onclick="deletePrayer('${escapeHtml(docId)}')" style="margin-top:4px;">Delete</button>
                     </td>
                 `;
@@ -181,19 +185,44 @@
                 });
             }
         };
-        
-        document.getElementById('add-prayer-form').addEventListener('submit', (e) => {
+
+        function resetPrayerForm() {
+            editingPrayerId = null;
+            prayerSubmitBtn.textContent = 'Submit Prayer Request';
+        }
+
+        window.editPrayer = function(id) {
+            const prayer = allPrayers.find(p => String(p._docId || p.id) === String(id));
+            if (!prayer) {
+                showToast('Prayer request not found for editing.', 'warning');
+                return;
+            }
+            editingPrayerId = id;
+            document.getElementById('prayer-name').value = prayer.name || '';
+            document.getElementById('prayer-request').value = prayer.request || '';
+            document.getElementById('prayer-status').value = prayer.status || 'Pending';
+            prayerSubmitBtn.textContent = 'Update Prayer Request';
+            prayerForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing prayer request. Update details and submit to save.', 'info');
+        };
+
+        prayerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const prayerData = {
                 name: document.getElementById('prayer-name').value,
                 request: document.getElementById('prayer-request').value,
                 status: document.getElementById('prayer-status').value
             };
-            
-            saveToFirebase(COLLECTION, prayerData).then(() => {
+            const isEditing = Boolean(editingPrayerId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingPrayerId, prayerData)
+                : saveToFirebase(COLLECTION, prayerData);
+
+            action.then(() => {
                 e.target.reset();
+                resetPrayerForm();
                 populateTable();
-                showToast('Prayer request submitted successfully!', 'success');
+                showToast(isEditing ? 'Prayer request updated successfully!' : 'Prayer request submitted successfully!', 'success');
             });
         });
         

@@ -118,7 +118,10 @@
         });
 
         const COLLECTION = 'tithes';
+        const titheForm = document.getElementById('add-tithe-form');
+        const titheSubmitBtn = titheForm.querySelector('button[type="submit"]');
         let allTithes = [];
+        let editingTitheId = null;
 
         function normalizeContributionType(type) {
             const normalized = (type || '').toString().trim();
@@ -165,6 +168,7 @@
                     <td>${escapeHtml(formatDate(tithe.date))}</td>
                     <td>${escapeHtml(tithe.branch)}</td>
                     <td>
+                        <button class="btn-secondary" onclick="editTithe('${escapeHtml(tithe._docId || tithe.id)}')">Edit</button>
                         <button class="btn-danger" onclick="deleteTithe('${escapeHtml(tithe._docId || tithe.id)}')">Delete</button>
                     </td>
                 `;
@@ -195,8 +199,30 @@
                 });
             }
         };
-        
-        document.getElementById('add-tithe-form').addEventListener('submit', (e) => {
+
+        function resetTitheForm() {
+            editingTitheId = null;
+            titheSubmitBtn.textContent = 'Record Contribution';
+        }
+
+        window.editTithe = function(id) {
+            const tithe = allTithes.find(t => String(t._docId || t.id) === String(id));
+            if (!tithe) {
+                showToast('Contribution not found for editing.', 'warning');
+                return;
+            }
+            editingTitheId = id;
+            document.getElementById('tithe-member').value = tithe.member || '';
+            document.getElementById('tithe-type').value = normalizeContributionType(tithe.type);
+            document.getElementById('tithe-amount').value = tithe.amount || '';
+            document.getElementById('tithe-date').value = tithe.date || '';
+            document.getElementById('tithe-branch').value = tithe.branch || '';
+            titheSubmitBtn.textContent = 'Update Contribution';
+            titheForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing contribution. Update details and submit to save.', 'info');
+        };
+
+        titheForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const titheData = {
                 member: document.getElementById('tithe-member').value,
@@ -205,11 +231,16 @@
                 date: document.getElementById('tithe-date').value,
                 branch: document.getElementById('tithe-branch').value
             };
-            
-            saveToFirebase(COLLECTION, titheData).then(() => {
+            const isEditing = Boolean(editingTitheId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingTitheId, titheData)
+                : saveToFirebase(COLLECTION, titheData);
+
+            action.then(() => {
                 e.target.reset();
+                resetTitheForm();
                 populateTable();
-                showToast('Contribution recorded successfully!', 'success');
+                showToast(isEditing ? 'Contribution updated successfully!' : 'Contribution recorded successfully!', 'success');
             });
         });
         

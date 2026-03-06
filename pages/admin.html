@@ -89,7 +89,10 @@
         });
 
         const COLLECTION = 'leaders';
+        const leaderForm = document.getElementById('add-leader-form');
+        const leaderSubmitBtn = leaderForm.querySelector('button[type="submit"]');
         let allLeaders = [];
+        let editingLeaderId = null;
         
         function renderTable(data) {
             const tbody = document.querySelector('#leaders-table tbody');
@@ -109,6 +112,7 @@
                     <td>${escapeHtml(leader.email)}</td>
                     <td>${escapeHtml(leader.phone)}</td>
                     <td>
+                        <button class="btn-secondary" onclick="editLeader('${escapeHtml(leader._docId || leader.id)}')">Edit</button>
                         <button class="btn-danger" onclick="deleteLeader('${escapeHtml(leader._docId || leader.id)}')">Delete</button>
                     </td>
                 `;
@@ -139,8 +143,29 @@
                 });
             }
         };
-        
-        document.getElementById('add-leader-form').addEventListener('submit', (e) => {
+
+        function resetLeaderForm() {
+            editingLeaderId = null;
+            leaderSubmitBtn.textContent = 'Add Leader';
+        }
+
+        window.editLeader = function(id) {
+            const leader = allLeaders.find(l => String(l._docId || l.id) === String(id));
+            if (!leader) {
+                showToast('Leader not found for editing.', 'warning');
+                return;
+            }
+            editingLeaderId = id;
+            document.getElementById('leader-name').value = leader.name || '';
+            document.getElementById('leader-role').value = leader.role || '';
+            document.getElementById('leader-email').value = leader.email || '';
+            document.getElementById('leader-phone').value = leader.phone || '';
+            leaderSubmitBtn.textContent = 'Update Leader';
+            leaderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing leader. Update details and submit to save.', 'info');
+        };
+
+        leaderForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const leaderData = {
                 name: document.getElementById('leader-name').value,
@@ -148,11 +173,16 @@
                 email: document.getElementById('leader-email').value,
                 phone: document.getElementById('leader-phone').value
             };
-            
-            saveToFirebase(COLLECTION, leaderData).then(() => {
+            const isEditing = Boolean(editingLeaderId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingLeaderId, leaderData)
+                : saveToFirebase(COLLECTION, leaderData);
+
+            action.then(() => {
                 e.target.reset();
+                resetLeaderForm();
                 populateTable();
-                showToast('Leader added successfully!', 'success');
+                showToast(isEditing ? 'Leader updated successfully!' : 'Leader added successfully!', 'success');
             });
         });
         
