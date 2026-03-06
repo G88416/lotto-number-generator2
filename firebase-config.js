@@ -76,7 +76,7 @@ function safeJsonParse(raw, fallback, labelOrOptions) {
         ? { label: labelOrOptions }
         : (labelOrOptions || {});
     if (typeof raw !== 'string') return fallback;
-    const normalized = raw.trim();
+    const normalized = raw.replace(/^\uFEFF/, '').trim();
     if (normalized === '') return fallback;
     const snippet = normalized.length > JSON_ERROR_SNIPPET_MAX_LENGTH
         ? `${normalized.slice(0, JSON_ERROR_SNIPPET_ELLIPSIS_OFFSET)}...`
