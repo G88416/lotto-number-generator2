@@ -390,7 +390,7 @@
         }
 
         function countUnique(records, field, fallback = 'Unspecified') {
-            return new Set(records.map(record => String(record[field] || fallback).trim()).filter(Boolean)).size;
+            return new Set(records.map(record => String(record[field] || fallback).trim())).size;
         }
 
         function buildCounts(records, field, fallback = 'Unspecified') {
@@ -511,7 +511,7 @@
             };
             const header = report.columns.map(column => escapeCsv(column.label)).join(',');
             const rows = report.rows.map(row =>
-                report.columns.map(column => escapeCsv(row[column.key] != null ? row[column.key] : '')).join(',')
+                report.columns.map(column => escapeCsv(row[column.key] ?? '')).join(',')
             );
             return [header, ...rows].join('\n');
         }
@@ -822,11 +822,19 @@
         };
 
         function openPrintableReport(report) {
-            const reportWindow = window.open('', '_blank', 'width=960,height=720');
+            const reportWindow = window.open('about:blank', '_blank', 'width=960,height=720');
             if (!reportWindow) {
                 showToast('Allow pop-ups to print the report.', 'error');
                 return;
             }
+            let printTriggered = false;
+            const triggerPrint = () => {
+                if (printTriggered) return;
+                printTriggered = true;
+                reportWindow.focus();
+                reportWindow.print();
+            };
+            reportWindow.onload = triggerPrint;
             const summaryHtml = report.summary.map(item => `
                 <div style="padding:16px; border:1px solid #d9e2ec; border-radius:10px; background:#f8f9fa;">
                     <div style="font-size:13px; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">${escapeHtml(item.label)}</div>
@@ -836,7 +844,7 @@
             const tableHeader = report.columns.map(column => `<th style="padding:10px; border:1px solid #d9e2ec; background:#1e3c72; color:#fff; text-align:left;">${escapeHtml(column.label)}</th>`).join('');
             const tableRows = report.rows.map(row => `
                 <tr>
-                    ${report.columns.map(column => `<td style="padding:10px; border:1px solid #d9e2ec;">${escapeHtml(String(row[column.key] != null ? row[column.key] : '—'))}</td>`).join('')}
+                    ${report.columns.map(column => `<td style="padding:10px; border:1px solid #d9e2ec;">${escapeHtml(String(row[column.key] ?? '—'))}</td>`).join('')}
                 </tr>
             `).join('');
 
@@ -867,8 +875,7 @@
                 </html>
             `);
             reportWindow.document.close();
-            reportWindow.focus();
-            setTimeout(() => reportWindow.print(), 250);
+            setTimeout(triggerPrint, 300);
         }
 
         async function generateReport() {
