@@ -7,7 +7,7 @@
 const ROLE_PERMISSIONS = {
     admin: {
         name: 'Admin',
-        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'prayers', 'sermons', 'volunteers', 'media', 'settings'],
+        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
         canEdit: true,
         canDelete: true
     },
@@ -25,7 +25,7 @@ const ROLE_PERMISSIONS = {
     },
     pastor: {
         name: 'Pastors Info',
-        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'prayers', 'sermons', 'volunteers', 'media', 'settings'],
+        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
         canEdit: true,
         canDelete: false
     }

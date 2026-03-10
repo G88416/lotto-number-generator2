@@ -36,7 +36,7 @@
             <li><a href="finance.html">Finance</a></li>
             <li><a href="admin.html">Admin</a></li>
             <li><a href="attendance.html">Attendance</a></li>
-            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="ministries.html">Ministries</a></li>
             <li><a href="sermons.html">Sermon Library</a></li>
             <li><a href="volunteers.html">Volunteers</a></li>
             <li><a href="media.html">Media Center</a></li>
@@ -161,7 +161,7 @@
                 <li>Member &amp; Visitor Management with search</li>
                 <li>Events &amp; Attendance Tracking with totals</li>
                 <li>Financial Contributions Management with breakdowns</li>
-                <li>Prayer Requests with status updates</li>
+                <li>Ministry folders with member assignments</li>
                 <li>Sermon Library &amp; Volunteer Coordination</li>
                 <li>Analytics &amp; Reports with bar charts</li>
                 <li>Media Creation Tools</li>
@@ -242,7 +242,7 @@
         
         // Backup data
         document.getElementById('backup-data').addEventListener('click', () => {
-            const collections = ['members', 'visitors', 'events', 'tithes', 'attendance', 'prayers', 'sermons', 'volunteers', 'leaders'];
+            const collections = ['members', 'visitors', 'events', 'tithes', 'attendance', 'ministries', 'sermons', 'volunteers', 'leaders'];
             const allData = { org_info: safeJsonParse(localStorage.getItem('org_info'), {}, 'org_info') };
             collections.forEach(c => {
                 allData[c] = safeJsonParse(localStorage.getItem(`charity_${c}`), [], `charity_${c}`);

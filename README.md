@@ -20,7 +20,7 @@ A comprehensive web-based management system designed for charitable organization
 - **Events Management**: Plan and organize organizational events
 - **Tithes & Offerings**: Track financial contributions
 - **Attendance Tracking**: Record service attendance across different groups
-- **Prayer Requests**: Manage prayer requests and intercession
+- **Ministries**: Organize ministry folders and member assignments
 - **Sermon Library**: Archive sermons and teachings
 - **Volunteer Management**: Coordinate volunteer activities
 - **Administration**: Manage leaders and ministries
@@ -62,7 +62,7 @@ For testing purposes, use these credentials:
 ### Role Permissions
 
 #### Admin
-- **Access**: All modules (Members, Visitors, Analytics, Events, Tithes & Offerings, Admin, Attendance, Prayer Requests, Sermon Library, Volunteers, Media Center, Settings)
+- **Access**: All modules (Members, Visitors, Analytics, Events, Tithes & Offerings, Admin, Attendance, Ministries, Sermon Library, Volunteers, Media Center, Settings)
 - **Permissions**: Full edit and delete permissions
 - **Use Case**: System administrators and senior leadership
 
@@ -215,7 +215,7 @@ firebase deploy
 7. **Tithes & Offerings** (`pages/tithes.html`) - Financial contributions tracking
 8. **Admin** (`pages/admin.html`) - Leaders and ministries management
 9. **Attendance** (`pages/attendance.html`) - Service attendance records
-10. **Prayer Requests** (`pages/prayers.html`) - Prayer request management
+10. **Ministries** (`pages/ministries.html`) - Ministry folder management
 11. **Sermon Library** (`pages/sermons.html`) - Sermon archiving
 12. **Volunteers** (`pages/volunteers.html`) - Volunteer coordination
 13. **Media Center** (`pages/media.html`) - Graphics creation tools

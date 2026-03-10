@@ -273,6 +273,74 @@ function getRowField(row, aliases) {
     return '';
 }
 
+const DEFAULT_MINISTRY_NAMES = [
+    'WOG',
+    'Mens',
+    'Young Adults',
+    'Youth',
+    'Woman of Virtue',
+    'Woman of Galilee'
+];
+
+function normalizeMinistryKey(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function getDefaultMinistries() {
+    return DEFAULT_MINISTRY_NAMES.map((name, index) => ({
+        name,
+        leader: '',
+        description: `${name} ministry`,
+        sortOrder: index
+    }));
+}
+
+function sortMinistries(items) {
+    return [...(items || [])].sort((a, b) => {
+        const orderA = Number.isFinite(a && a.sortOrder) ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+        const orderB = Number.isFinite(b && b.sortOrder) ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+    });
+}
+
+function ensureDefaultMinistries() {
+    const defaults = getDefaultMinistries();
+    const localKey = 'charity_ministries';
+    const mergeDefaults = (items) => {
+        const existing = Array.isArray(items) ? items : [];
+        const seen = new Set(existing.map(item => normalizeMinistryKey(item && item.name)));
+        const missing = defaults.filter(item => !seen.has(normalizeMinistryKey(item.name)));
+        return existing.concat(missing);
+    };
+
+    if (typeof db !== 'undefined' && db && typeof firebase !== 'undefined' && firebase.firestore) {
+        return db.collection('ministries').get().then((snapshot) => {
+            const existingDocs = snapshot.docs.map(doc => ({ _docId: doc.id, id: doc.id, ...doc.data() }));
+            const merged = mergeDefaults(existingDocs);
+            const existingNames = new Set(existingDocs.map(item => normalizeMinistryKey(item.name || item.id)));
+            const missing = defaults.filter(item => !existingNames.has(normalizeMinistryKey(item.name)));
+            if (missing.length === 0) return merged;
+
+            return Promise.all(missing.map((item) => {
+                const docId = normalizeMinistryKey(item.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `ministry-${item.sortOrder}`;
+                return db.collection('ministries').doc(docId).set({
+                    ...item,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            })).then(() => merged);
+        }).catch(() => {
+            const merged = mergeDefaults(safeJsonParse(localStorage.getItem(localKey), [], localKey));
+            localStorage.setItem(localKey, JSON.stringify(merged));
+            return merged.map((item, index) => ({ _docId: index, id: index, ...item }));
+        });
+    }
+
+    const merged = mergeDefaults(safeJsonParse(localStorage.getItem(localKey), [], localKey));
+    localStorage.setItem(localKey, JSON.stringify(merged));
+    return Promise.resolve(merged.map((item, index) => ({ _docId: index, id: index, ...item })));
+}
+
 /**
  * Read locally-managed application users from localStorage.
  * These are users created via Settings → User Management when Firebase is
