@@ -127,7 +127,7 @@
                     <span id="income-total-offering">R 0.00</span>Total Missions Offering
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#ffd54f 0%,#ffb74d 100%);color:#333;">
-                    <span id="income-total-branch-offering">R 0.00</span>Branch Offering
+                    <span id="income-total-branch-contribution">R 0.00</span>Branch Contribution
                 </div>
                 <div class="summary-item" style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);">
                     <span id="income-total-eft">R 0.00</span>Total EFT
@@ -143,7 +143,7 @@
                         <th>Month</th>
                         <th>Tithes (R)</th>
                         <th>Missions Offering (R)</th>
-                        <th>Branch Offering (R)</th>
+                        <th>Branch Contribution (R)</th>
                         <th>EFT (R)</th>
                         <th>Total Income (R)</th>
                         <th>Total Expenses (R)</th>
@@ -385,6 +385,11 @@
             return 'EFT';
         }
 
+        function getBranchContributionValue(record) {
+            const amount = parseFloat(record?.branchContribution ?? record?.branchOffering);
+            return Number.isFinite(amount) ? amount : 0;
+        }
+
         function renderIncomeTable() {
             const yearFilter = document.getElementById('income-year-filter').value;
 
@@ -394,21 +399,21 @@
                 const key = getMonthKey(t.date);
                 if (!key) return;
                 if (yearFilter && !key.startsWith(yearFilter)) return;
-                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchOffering:0, EFT:0 };
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
                 const amt = parseFloat(t.amount) || 0;
                 const type = normalizeIncomeType(t.type);
                 incomeByMonth[key][type] += amt;
             });
 
-            // Aggregate attendance branch offerings by month
+            // Aggregate attendance branch contributions by month
             allAttendance.forEach(record => {
-                const branchOffering = parseFloat(record.branchOffering) || 0;
-                if (!branchOffering) return;
+                const branchContribution = getBranchContributionValue(record);
+                if (!branchContribution) return;
                 const key = getMonthKey(record.date);
                 if (!key) return;
                 if (yearFilter && !key.startsWith(yearFilter)) return;
-                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchOffering:0, EFT:0 };
-                incomeByMonth[key].BranchOffering += branchOffering;
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
+                incomeByMonth[key].BranchContribution += branchContribution;
             });
 
             // Aggregate expenses by month
@@ -435,8 +440,8 @@
             }
 
             sortedKeys.forEach(key => {
-                const income = incomeByMonth[key] || { Tithe:0, Offering:0, BranchOffering:0, EFT:0 };
-                const totalIncome = income.Tithe + income.Offering + income.BranchOffering + income.EFT;
+                const income = incomeByMonth[key] || { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
+                const totalIncome = income.Tithe + income.Offering + income.BranchContribution + income.EFT;
                 const totalExp = expenseByMonth[key] || 0;
                 const net = totalIncome - totalExp;
                 const [year, month] = key.split('-');
@@ -447,7 +452,7 @@
                     <td class="month-label">${escapeHtml(label)}</td>
                     <td>R ${income.Tithe.toFixed(2)}</td>
                     <td>R ${income.Offering.toFixed(2)}</td>
-                    <td>R ${income.BranchOffering.toFixed(2)}</td>
+                    <td>R ${income.BranchContribution.toFixed(2)}</td>
                     <td>R ${income.EFT.toFixed(2)}</td>
                     <td>R ${totalIncome.toFixed(2)}</td>
                     <td>R ${totalExp.toFixed(2)}</td>
@@ -457,7 +462,7 @@
             });
 
             updateIncomeSummary(sortedKeys.map(k => ({
-                income: incomeByMonth[k] || { Tithe:0, Offering:0, BranchOffering:0, EFT:0 }
+                income: incomeByMonth[k] || { Tithe:0, Offering:0, BranchContribution:0, EFT:0 }
             })));
         }
 
@@ -467,7 +472,7 @@
                 const key = getMonthKey(t.date);
                 return key && (!yearFilter || key.startsWith(yearFilter));
             });
-            const sums = { Tithe:0, Offering:0, BranchOffering:0, EFT:0 };
+            const sums = { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
             filtered.forEach(t => {
                 const amt = parseFloat(t.amount) || 0;
                 const type = normalizeIncomeType(t.type);
@@ -478,12 +483,12 @@
                 return key && (!yearFilter || key.startsWith(yearFilter));
             });
             attendanceFiltered.forEach(record => {
-                sums.BranchOffering += parseFloat(record.branchOffering) || 0;
+                sums.BranchContribution += getBranchContributionValue(record);
             });
-            const total = sums.Tithe + sums.Offering + sums.BranchOffering + sums.EFT;
+            const total = sums.Tithe + sums.Offering + sums.BranchContribution + sums.EFT;
             document.getElementById('income-total-tithe').textContent    = 'R ' + sums.Tithe.toFixed(2);
             document.getElementById('income-total-offering').textContent = 'R ' + sums.Offering.toFixed(2);
-            document.getElementById('income-total-branch-offering').textContent = 'R ' + sums.BranchOffering.toFixed(2);
+            document.getElementById('income-total-branch-contribution').textContent = 'R ' + sums.BranchContribution.toFixed(2);
             document.getElementById('income-total-eft').textContent = 'R ' + sums.EFT.toFixed(2);
             document.getElementById('income-grand-total').textContent    = 'R ' + total.toFixed(2);
         }
@@ -500,7 +505,7 @@
             });
             allAttendance.forEach(record => {
                 const key = getMonthKey(record.date);
-                if (key && (parseFloat(record.branchOffering) || 0)) {
+                if (key && getBranchContributionValue(record)) {
                     years.add(key.split('-')[0]);
                 }
             });
