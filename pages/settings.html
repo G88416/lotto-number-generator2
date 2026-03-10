@@ -14,6 +14,32 @@
     <script src="../firebase-config.js"></script>
     <script>initializeFirebase();</script>
     <script src="../auth.js"></script>
+    <style>
+        .analytics-section { margin-top: 30px; }
+        .analytics-section h4 { color: #2a5298; border-bottom: 2px solid #e1e8ed; padding-bottom: 8px; margin-bottom: 15px; }
+        .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+        .bar-row { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+        .bar-label { width: 160px; flex-shrink: 0; text-align: right; color: #495057; font-weight: 500; }
+        .bar-track { flex: 1; background: #e9ecef; border-radius: 6px; height: 24px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.6s ease; }
+        .bar-value { width: 90px; text-align: left; font-weight: 600; color: #2a5298; }
+        .report-generator-card { margin-top: 20px; padding: 24px; background: #f8f9fa; border-radius: 12px; }
+        .report-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
+        .report-filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .report-filter-group label { font-weight: 600; color: #2a5298; }
+        .report-filter-group small { color: #6c757d; }
+        .report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+        .report-meta { margin-top: 15px; color: #495057; line-height: 1.6; }
+        .report-empty-state { color: #6c757d; }
+        .report-summary-grid { margin-top: 20px; }
+        .report-summary-grid .stat-card { min-height: 130px; }
+        .report-table-wrap { overflow-x: auto; }
+        .report-table-wrap table { min-width: 700px; }
+        @media (max-width: 768px) {
+            .bar-row { align-items: flex-start; flex-direction: column; }
+            .bar-label, .bar-value { width: 100%; text-align: left; }
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -46,7 +72,7 @@
     
     <main>
         <h2>⚙️ Settings</h2>
-        <p>Configure system preferences and manage data.</p>
+        <p>Configure system preferences, generate reports, and manage data.</p>
         
         <h3>Appearance</h3>
         <form id="appearance-form">
@@ -71,11 +97,88 @@
             <button type="submit" class="btn-secondary">Save Organization Info</button>
         </form>
         
+        <h3>Advanced Report Generator</h3>
+        <div class="report-generator-card">
+            <p>Generate executive, membership, visitor, event, contribution, and attendance reports directly from your live records.</p>
+            <div class="report-filter-grid" id="report-controls">
+                <div class="report-filter-group">
+                    <label for="report-type-filter">Report Type</label>
+                    <select id="report-type-filter">
+                        <option value="overview">Executive Overview</option>
+                        <option value="members">Membership Directory</option>
+                        <option value="visitors">Visitor Follow-up</option>
+                        <option value="events">Events Calendar</option>
+                        <option value="tithes">Contributions Summary</option>
+                        <option value="attendance">Attendance Summary</option>
+                    </select>
+                </div>
+                <div class="report-filter-group">
+                    <label for="report-format-filter">Output Format</label>
+                    <select id="report-format-filter">
+                        <option value="preview">Preview on screen</option>
+                        <option value="csv">Generate and export CSV</option>
+                        <option value="print">Generate printable report</option>
+                    </select>
+                </div>
+                <div class="report-filter-group">
+                    <label for="report-range-filter">Date Range</label>
+                    <select id="report-range-filter">
+                        <option value="all">All time</option>
+                        <option value="this-month">This month</option>
+                        <option value="last-30">Last 30 days</option>
+                        <option value="custom">Custom range</option>
+                    </select>
+                </div>
+                <div class="report-filter-group">
+                    <label for="report-branch-filter">Branch Filter</label>
+                    <input type="text" id="report-branch-filter" placeholder="All branches">
+                </div>
+                <div class="report-filter-group" id="report-start-group" style="display:none;">
+                    <label for="report-start-filter">Start Date</label>
+                    <input type="date" id="report-start-filter">
+                </div>
+                <div class="report-filter-group" id="report-end-group" style="display:none;">
+                    <label for="report-end-filter">End Date</label>
+                    <input type="date" id="report-end-filter">
+                </div>
+            </div>
+            <div class="report-actions">
+                <button id="generate-report" class="btn-secondary" type="button">Generate Report</button>
+                <button id="export-report" class="btn-secondary" type="button" disabled>Export CSV</button>
+                <button id="print-report" type="button" disabled>Print Report</button>
+            </div>
+            <p class="report-meta" id="report-meta">Choose your filters and generate a report to preview the results here.</p>
+            <div class="stats-grid report-summary-grid" id="report-summary"></div>
+            <div class="analytics-section">
+                <h4 id="report-chart-title">Report Breakdown</h4>
+                <div class="bar-chart" id="report-chart">
+                    <p class="report-empty-state">No report generated yet.</p>
+                </div>
+            </div>
+            <div class="analytics-section">
+                <h4 id="report-table-title">Detailed Results</h4>
+                <div class="report-table-wrap">
+                    <table id="report-table">
+                        <thead>
+                            <tr id="report-table-head">
+                                <th>Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-table-body">
+                            <tr>
+                                <td colspan="2">Generate a report to review detailed records.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <h3>Data Management</h3>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
-            <button id="backup-data" class="btn-secondary">Backup All Data</button>
-            <button id="restore-data" class="btn-secondary">Restore Data</button>
-            <button id="clear-data" class="btn-danger">Clear All Data</button>
+            <button id="restore-data" class="btn-secondary" type="button">Restore Data</button>
+            <button id="clear-data" class="btn-danger" type="button">Clear All Data</button>
         </div>
         
         <h3 id="user-mgmt-heading" style="display:none">👥 User Management</h3>
@@ -240,22 +343,588 @@
             } catch (e) { /* ignore */ }
         }
         
-        // Backup data
-        document.getElementById('backup-data').addEventListener('click', () => {
-            const collections = ['members', 'visitors', 'events', 'tithes', 'attendance', 'ministries', 'sermons', 'volunteers', 'leaders'];
-            const allData = { org_info: safeJsonParse(localStorage.getItem('org_info'), {}, 'org_info') };
-            collections.forEach(c => {
-                allData[c] = safeJsonParse(localStorage.getItem(`charity_${c}`), [], `charity_${c}`);
+        const reportTypeFilter = document.getElementById('report-type-filter');
+        const reportFormatFilter = document.getElementById('report-format-filter');
+        const reportRangeFilter = document.getElementById('report-range-filter');
+        const reportBranchFilter = document.getElementById('report-branch-filter');
+        const reportStartFilter = document.getElementById('report-start-filter');
+        const reportEndFilter = document.getElementById('report-end-filter');
+        const reportStartGroup = document.getElementById('report-start-group');
+        const reportEndGroup = document.getElementById('report-end-group');
+        const reportMeta = document.getElementById('report-meta');
+        const reportSummary = document.getElementById('report-summary');
+        const reportChartTitle = document.getElementById('report-chart-title');
+        const reportChart = document.getElementById('report-chart');
+        const reportTableTitle = document.getElementById('report-table-title');
+        const reportTableHead = document.getElementById('report-table-head');
+        const reportTableBody = document.getElementById('report-table-body');
+        const exportReportButton = document.getElementById('export-report');
+        const printReportButton = document.getElementById('print-report');
+        let currentGeneratedReport = null;
+        const reportColors = [
+            'linear-gradient(135deg,#667eea,#764ba2)',
+            'linear-gradient(135deg,#56ab2f,#a8e063)',
+            'linear-gradient(135deg,#f093fb,#f5576c)',
+            'linear-gradient(135deg,#4facfe,#00f2fe)',
+            'linear-gradient(135deg,#f7971e,#ffd200)',
+            'linear-gradient(135deg,#11998e,#38ef7d)'
+        ];
+
+        function formatCurrency(value) {
+            const amount = Number(value) || 0;
+            return 'R ' + amount.toFixed(2);
+        }
+
+        function parseDateValue(value) {
+            if (!value) return null;
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const [year, month, day] = value.split('-').map(Number);
+                return new Date(year, month - 1, day);
+            }
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function startOfDay(date) {
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        }
+
+        function countUnique(records, field, fallback = 'Unspecified') {
+            return new Set(records.map(record => String(record[field] || fallback).trim()).filter(Boolean)).size;
+        }
+
+        function buildCounts(records, field, fallback = 'Unspecified') {
+            const totals = {};
+            records.forEach(record => {
+                const key = String(record[field] || fallback).trim() || fallback;
+                totals[key] = (totals[key] || 0) + 1;
             });
-            
-            const blob = new Blob([JSON.stringify(allData, null, 2)], {type: 'application/json'});
+            return totals;
+        }
+
+        function buildTotals(records, field, numericField, fallback = 'Unspecified') {
+            const totals = {};
+            records.forEach(record => {
+                const key = String(record[field] || fallback).trim() || fallback;
+                totals[key] = (totals[key] || 0) + (parseFloat(record[numericField]) || 0);
+            });
+            return totals;
+        }
+
+        function toChartItems(totals, formatter) {
+            return Object.entries(totals)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8)
+                .map(([label, value]) => ({
+                    label,
+                    value,
+                    displayValue: formatter ? formatter(value) : String(value)
+                }));
+        }
+
+        function createSummaryCard(label, value, color) {
+            return `
+                <div class="stat-card" style="background:${color};">
+                    <h3>${escapeHtml(label)}</h3>
+                    <div class="value">${escapeHtml(String(value))}</div>
+                </div>`;
+        }
+
+        function makeBar(label, value, max, color, displayValue) {
+            const percentage = max > 0 ? Math.round((value / max) * 100) : 0;
+            return `
+                <div class="bar-row">
+                    <div class="bar-label">${escapeHtml(label)}</div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:${percentage}%; background:${color};"></div>
+                    </div>
+                    <div class="bar-value">${escapeHtml(String(displayValue || value))}</div>
+                </div>`;
+        }
+
+        function fallbackCollectionData(collection) {
+            const key = `charity_${collection}`;
+            const data = safeJsonParse(localStorage.getItem(key), [], key);
+            return Array.isArray(data)
+                ? data.map((item, index) => ({ _docId: item._docId || item.id || index, id: item.id || item._docId || index, ...item }))
+                : [];
+        }
+
+        async function fetchCollectionData(collection) {
+            if (db) {
+                try {
+                    const snapshot = await db.collection(collection).get();
+                    return snapshot.docs.map(doc => ({ _docId: doc.id, id: doc.id, ...doc.data() }));
+                } catch (error) {
+                    console.warn(`Falling back to local data for ${collection}:`, error.message);
+                }
+            }
+            return fallbackCollectionData(collection);
+        }
+
+        function matchesFilters(record, filters, dateField) {
+            const branchFilter = filters.branch.trim().toLowerCase();
+            if (branchFilter) {
+                const branchValue = String(record.branch || '').toLowerCase();
+                if (!branchValue.includes(branchFilter)) return false;
+            }
+
+            if (!dateField || filters.range === 'all') return true;
+
+            const recordDate = parseDateValue(record[dateField]);
+            if (!recordDate) return false;
+
+            const normalized = startOfDay(recordDate).getTime();
+            const today = startOfDay(new Date());
+            if (filters.range === 'this-month') {
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
+                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).getTime();
+                return normalized >= monthStart && normalized <= monthEnd;
+            }
+            if (filters.range === 'last-30') {
+                const last30Start = new Date(today);
+                last30Start.setDate(today.getDate() - 29);
+                return normalized >= startOfDay(last30Start).getTime() && normalized <= today.getTime();
+            }
+            if (filters.range === 'custom') {
+                return normalized >= filters.start.getTime() && normalized <= filters.end.getTime();
+            }
+            return true;
+        }
+
+        function filterRecords(records, filters, dateField) {
+            return records.filter(record => matchesFilters(record, filters, dateField));
+        }
+
+        function sanitizeFilePart(value) {
+            return String(value || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'report';
+        }
+
+        function buildCsvContent(report) {
+            const escapeCsv = (value) => {
+                if (value == null) return '';
+                const text = String(value);
+                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                    return `"${text.replace(/"/g, '""')}"`;
+                }
+                return text;
+            };
+            const header = report.columns.map(column => escapeCsv(column.label)).join(',');
+            const rows = report.rows.map(row =>
+                report.columns.map(column => escapeCsv(row[column.key] != null ? row[column.key] : '')).join(',')
+            );
+            return [header, ...rows].join('\n');
+        }
+
+        function downloadTextFile(content, filename, type) {
+            const blob = new Blob([content], { type });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `charity-faith-mission-backup-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            showToast('Data backup downloaded successfully!', 'success');
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function getOrganizationName() {
+            try {
+                const orgInfo = JSON.parse(localStorage.getItem('org_info') || '{}');
+                return orgInfo.name || document.getElementById('org-name').value || 'Charity and Faith Mission';
+            } catch (error) {
+                return document.getElementById('org-name').value || 'Charity and Faith Mission';
+            }
+        }
+
+        function renderReport(report) {
+            currentGeneratedReport = report;
+            exportReportButton.disabled = report.rows.length === 0;
+            printReportButton.disabled = report.rows.length === 0;
+            reportMeta.textContent = report.meta;
+            reportSummary.innerHTML = report.summary.length
+                ? report.summary.map((item, index) => createSummaryCard(item.label, item.value, reportColors[index % reportColors.length])).join('')
+                : '<p class="report-empty-state">No summary metrics available for the selected report.</p>';
+            reportChartTitle.textContent = report.chartTitle;
+            if (report.chartItems.length) {
+                const maxValue = Math.max(...report.chartItems.map(item => item.value), 1);
+                reportChart.innerHTML = report.chartItems.map((item, index) =>
+                    makeBar(item.label, item.value, maxValue, reportColors[index % reportColors.length], item.displayValue)
+                ).join('');
+            } else {
+                reportChart.innerHTML = '<p class="report-empty-state">No breakdown data available for the current filters.</p>';
+            }
+            reportTableTitle.textContent = report.tableTitle;
+            reportTableHead.innerHTML = report.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('');
+            if (report.rows.length) {
+                reportTableBody.innerHTML = report.rows.map(row => `
+                    <tr>
+                        ${report.columns.map(column => `<td>${escapeHtml(String(row[column.key] != null ? row[column.key] : '—'))}</td>`).join('')}
+                    </tr>
+                `).join('');
+            } else {
+                reportTableBody.innerHTML = `<tr><td colspan="${report.columns.length}">No records match the selected filters.</td></tr>`;
+            }
+        }
+
+        function getFilters() {
+            const filters = {
+                type: reportTypeFilter.value,
+                format: reportFormatFilter.value,
+                range: reportRangeFilter.value,
+                branch: reportBranchFilter.value || ''
+            };
+            if (filters.range === 'custom') {
+                if (!reportStartFilter.value || !reportEndFilter.value) {
+                    throw new Error('Select both a start and end date for the custom range.');
+                }
+                const start = parseDateValue(reportStartFilter.value);
+                const end = parseDateValue(reportEndFilter.value);
+                if (!start || !end || start > end) {
+                    throw new Error('Choose a valid custom date range.');
+                }
+                filters.start = startOfDay(start);
+                filters.end = startOfDay(end);
+            }
+            return filters;
+        }
+
+        const reportBuilders = {
+            async overview(filters) {
+                const definitions = [
+                    { key: 'members', label: 'Members', dateField: null },
+                    { key: 'visitors', label: 'Visitors', dateField: 'date' },
+                    { key: 'events', label: 'Events', dateField: 'date' },
+                    { key: 'tithes', label: 'Contributions', dateField: 'date' },
+                    { key: 'attendance', label: 'Attendance', dateField: 'date' },
+                    { key: 'volunteers', label: 'Volunteers', dateField: null },
+                    { key: 'sermons', label: 'Sermons', dateField: 'date' }
+                ];
+                const collectionData = await Promise.all(definitions.map(async definition => {
+                    const records = await fetchCollectionData(definition.key);
+                    return {
+                        ...definition,
+                        records: filterRecords(records, filters, definition.dateField)
+                    };
+                }));
+
+                const members = collectionData.find(item => item.key === 'members').records;
+                const visitors = collectionData.find(item => item.key === 'visitors').records;
+                const events = collectionData.find(item => item.key === 'events').records;
+                const tithes = collectionData.find(item => item.key === 'tithes').records;
+                const attendance = collectionData.find(item => item.key === 'attendance').records;
+                const volunteers = collectionData.find(item => item.key === 'volunteers').records;
+
+                const totalGiving = tithes.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                const totalAttendance = attendance.reduce((sum, item) => sum + (parseInt(item.total, 10) || 0), 0);
+                const today = startOfDay(new Date()).getTime();
+                const upcomingEvents = events.filter(event => {
+                    const eventDate = parseDateValue(event.date);
+                    return eventDate && startOfDay(eventDate).getTime() >= today;
+                }).length;
+                const peopleReached = members.length + visitors.length + volunteers.length;
+
+                return {
+                    title: 'Executive Overview',
+                    meta: `Executive overview for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · ${filters.range === 'all' ? 'All time' : 'Filtered date range'}. Snapshot collections such as members and volunteers remain current-state totals.`,
+                    summary: [
+                        { label: 'People Reached', value: peopleReached },
+                        { label: 'Total Giving', value: formatCurrency(totalGiving) },
+                        { label: 'Attendance Logged', value: totalAttendance },
+                        { label: 'Upcoming Events', value: upcomingEvents }
+                    ],
+                    chartTitle: 'Records by module',
+                    chartItems: collectionData.map(item => ({
+                        label: item.label,
+                        value: item.records.length,
+                        displayValue: item.records.length
+                    })),
+                    tableTitle: 'Module Highlights',
+                    columns: [
+                        { key: 'module', label: 'Module' },
+                        { key: 'records', label: 'Records' },
+                        { key: 'highlight', label: 'Highlight' }
+                    ],
+                    rows: [
+                        { module: 'Members', records: members.length, highlight: `${countUnique(members, 'ministry', 'Unassigned')} ministries represented` },
+                        { module: 'Visitors', records: visitors.length, highlight: `${countUnique(visitors, 'branch', 'Unspecified')} branches reached` },
+                        { module: 'Events', records: events.length, highlight: `${upcomingEvents} upcoming events` },
+                        { module: 'Contributions', records: tithes.length, highlight: formatCurrency(totalGiving) },
+                        { module: 'Attendance', records: attendance.length, highlight: `${totalAttendance} people logged` },
+                        { module: 'Volunteers', records: volunteers.length, highlight: `${countUnique(volunteers, 'role', 'General')} volunteer roles` }
+                    ]
+                };
+            },
+            async members(filters) {
+                const records = filterRecords(await fetchCollectionData('members'), filters, null);
+                return {
+                    title: 'Membership Directory',
+                    meta: `Membership directory for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · Date filters are not applied because member records are current-state profiles.`,
+                    summary: [
+                        { label: 'Total Members', value: records.length },
+                        { label: 'Branches', value: countUnique(records, 'branch', 'Unspecified') },
+                        { label: 'Ministries', value: countUnique(records, 'ministry', 'Unassigned') },
+                        { label: 'With Email', value: records.filter(member => member.email).length }
+                    ],
+                    chartTitle: 'Members per ministry',
+                    chartItems: toChartItems(buildCounts(records, 'ministry', 'Unassigned')),
+                    tableTitle: 'Member Details',
+                    columns: [
+                        { key: 'name', label: 'Name' },
+                        { key: 'surname', label: 'Surname' },
+                        { key: 'ministry', label: 'Ministry' },
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'contact', label: 'Contact' }
+                    ],
+                    rows: records.map(member => ({
+                        name: member.name || '—',
+                        surname: member.surname || '—',
+                        ministry: member.ministry || 'Unassigned',
+                        branch: member.branch || 'Unspecified',
+                        contact: member.cell || member.email || '—'
+                    }))
+                };
+            },
+            async visitors(filters) {
+                const records = filterRecords(await fetchCollectionData('visitors'), filters, 'date')
+                    .sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
+                return {
+                    title: 'Visitor Follow-up',
+                    meta: `Visitor follow-up report for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · ${filters.range === 'all' ? 'All visit records included.' : 'Date filter applied to visit dates.'}`,
+                    summary: [
+                        { label: 'Visitors', value: records.length },
+                        { label: 'Branches', value: countUnique(records, 'branch', 'Unspecified') },
+                        { label: 'With Contact', value: records.filter(visitor => visitor.email || visitor.cell).length },
+                        { label: 'Notes Added', value: records.filter(visitor => visitor.notes).length }
+                    ],
+                    chartTitle: 'Visitors by branch',
+                    chartItems: toChartItems(buildCounts(records, 'branch', 'Unspecified')),
+                    tableTitle: 'Visitor Details',
+                    columns: [
+                        { key: 'name', label: 'Name' },
+                        { key: 'date', label: 'Visit Date' },
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'contact', label: 'Contact' },
+                        { key: 'notes', label: 'Notes' }
+                    ],
+                    rows: records.map(visitor => ({
+                        name: visitor.name || '—',
+                        date: visitor.date || '—',
+                        branch: visitor.branch || 'Unspecified',
+                        contact: visitor.cell || visitor.email || '—',
+                        notes: visitor.notes || '—'
+                    }))
+                };
+            },
+            async events(filters) {
+                const records = filterRecords(await fetchCollectionData('events'), filters, 'date')
+                    .sort((a, b) => (parseDateValue(a.date)?.getTime() || 0) - (parseDateValue(b.date)?.getTime() || 0));
+                const today = startOfDay(new Date()).getTime();
+                const upcoming = records.filter(event => {
+                    const eventDate = parseDateValue(event.date);
+                    return eventDate && startOfDay(eventDate).getTime() >= today;
+                }).length;
+                return {
+                    title: 'Events Calendar',
+                    meta: `Events calendar for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · ${filters.range === 'all' ? 'All scheduled events included.' : 'Date filter applied to event dates.'}`,
+                    summary: [
+                        { label: 'Events', value: records.length },
+                        { label: 'Upcoming', value: upcoming },
+                        { label: 'Branches', value: countUnique(records, 'branch', 'Unspecified') },
+                        { label: 'Organizers', value: countUnique(records, 'organizer', 'Unspecified') }
+                    ],
+                    chartTitle: 'Events by branch',
+                    chartItems: toChartItems(buildCounts(records, 'branch', 'Unspecified')),
+                    tableTitle: 'Event Details',
+                    columns: [
+                        { key: 'title', label: 'Title' },
+                        { key: 'date', label: 'Date' },
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'organizer', label: 'Organizer' },
+                        { key: 'description', label: 'Description' }
+                    ],
+                    rows: records.map(event => ({
+                        title: event.title || '—',
+                        date: event.date || '—',
+                        branch: event.branch || 'Unspecified',
+                        organizer: event.organizer || '—',
+                        description: event.desc || '—'
+                    }))
+                };
+            },
+            async tithes(filters) {
+                const records = filterRecords(await fetchCollectionData('tithes'), filters, 'date')
+                    .sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
+                const totalAmount = records.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
+                const averageGift = records.length ? totalAmount / records.length : 0;
+                return {
+                    title: 'Contributions Summary',
+                    meta: `Contribution report for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · ${filters.range === 'all' ? 'All contributions included.' : 'Date filter applied to contribution dates.'}`,
+                    summary: [
+                        { label: 'Total Giving', value: formatCurrency(totalAmount) },
+                        { label: 'Contributions', value: records.length },
+                        { label: 'Average Gift', value: formatCurrency(averageGift) },
+                        { label: 'Contribution Types', value: countUnique(records, 'type', 'Other') }
+                    ],
+                    chartTitle: 'Giving by contribution type',
+                    chartItems: toChartItems(buildTotals(records, 'type', 'amount', 'Other'), formatCurrency),
+                    tableTitle: 'Contribution Details',
+                    columns: [
+                        { key: 'member', label: 'Contributor' },
+                        { key: 'type', label: 'Type' },
+                        { key: 'amount', label: 'Amount' },
+                        { key: 'date', label: 'Date' },
+                        { key: 'branch', label: 'Branch' }
+                    ],
+                    rows: records.map(record => ({
+                        member: record.member || '—',
+                        type: record.type || 'Other',
+                        amount: formatCurrency(record.amount),
+                        date: record.date || '—',
+                        branch: record.branch || 'Unspecified'
+                    }))
+                };
+            },
+            async attendance(filters) {
+                const records = filterRecords(await fetchCollectionData('attendance'), filters, 'date')
+                    .sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
+                const totalAttendance = records.reduce((sum, record) => sum + (parseInt(record.total, 10) || 0), 0);
+                const totalOffering = records.reduce((sum, record) => sum + (parseFloat(record.branchOffering) || 0), 0);
+                const averageAttendance = records.length ? Math.round(totalAttendance / records.length) : 0;
+                return {
+                    title: 'Attendance Summary',
+                    meta: `Attendance report for ${getOrganizationName()} · ${filters.branch ? `Branch filter: ${filters.branch}` : 'All branches'} · ${filters.range === 'all' ? 'All attendance records included.' : 'Date filter applied to attendance dates.'}`,
+                    summary: [
+                        { label: 'Total Attendance', value: totalAttendance },
+                        { label: 'Service Records', value: records.length },
+                        { label: 'Average per Service', value: averageAttendance },
+                        { label: 'Branch Offering', value: formatCurrency(totalOffering) }
+                    ],
+                    chartTitle: 'Attendance by branch',
+                    chartItems: toChartItems(buildTotals(records, 'branch', 'total', 'Unspecified')),
+                    tableTitle: 'Attendance Details',
+                    columns: [
+                        { key: 'date', label: 'Date' },
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'youth', label: 'Youth' },
+                        { key: 'adult', label: 'Adult' },
+                        { key: 'sunday', label: 'Sunday School' },
+                        { key: 'total', label: 'Total' }
+                    ],
+                    rows: records.map(record => ({
+                        date: record.date || '—',
+                        branch: record.branch || 'Unspecified',
+                        youth: record.youth || 0,
+                        adult: record.adult || 0,
+                        sunday: record.sunday || 0,
+                        total: record.total || 0
+                    }))
+                };
+            }
+        };
+
+        function openPrintableReport(report) {
+            const reportWindow = window.open('', '_blank', 'width=960,height=720');
+            if (!reportWindow) {
+                showToast('Allow pop-ups to print the report.', 'error');
+                return;
+            }
+            const summaryHtml = report.summary.map(item => `
+                <div style="padding:16px; border:1px solid #d9e2ec; border-radius:10px; background:#f8f9fa;">
+                    <div style="font-size:13px; color:#4a5568; text-transform:uppercase; letter-spacing:0.06em;">${escapeHtml(item.label)}</div>
+                    <div style="font-size:28px; font-weight:700; color:#1e3c72; margin-top:8px;">${escapeHtml(String(item.value))}</div>
+                </div>
+            `).join('');
+            const tableHeader = report.columns.map(column => `<th style="padding:10px; border:1px solid #d9e2ec; background:#1e3c72; color:#fff; text-align:left;">${escapeHtml(column.label)}</th>`).join('');
+            const tableRows = report.rows.map(row => `
+                <tr>
+                    ${report.columns.map(column => `<td style="padding:10px; border:1px solid #d9e2ec;">${escapeHtml(String(row[column.key] != null ? row[column.key] : '—'))}</td>`).join('')}
+                </tr>
+            `).join('');
+
+            reportWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${escapeHtml(report.title)}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2933; margin: 32px; }
+                        h1 { color: #1e3c72; margin-bottom: 8px; }
+                        p { margin-bottom: 18px; line-height: 1.6; }
+                        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 24px 0; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${escapeHtml(getOrganizationName())}</h1>
+                    <h2>${escapeHtml(report.title)}</h2>
+                    <p>${escapeHtml(report.meta)}</p>
+                    <div class="summary-grid">${summaryHtml}</div>
+                    <table>
+                        <thead><tr>${tableHeader}</tr></thead>
+                        <tbody>${tableRows || `<tr><td colspan="${report.columns.length}" style="padding:10px; border:1px solid #d9e2ec;">No records matched the selected filters.</td></tr>`}</tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            reportWindow.document.close();
+            reportWindow.focus();
+            setTimeout(() => reportWindow.print(), 250);
+        }
+
+        async function generateReport() {
+            try {
+                const filters = getFilters();
+                const buildReport = reportBuilders[filters.type];
+                if (!buildReport) {
+                    throw new Error('Please select a valid report type.');
+                }
+                const report = await buildReport(filters);
+                renderReport(report);
+                showToast(`${report.title} generated successfully!`, 'success');
+
+                if (filters.format === 'csv') {
+                    downloadTextFile(
+                        buildCsvContent(report),
+                        `${sanitizeFilePart(report.title)}-${new Date().toISOString().split('T')[0]}.csv`,
+                        'text/csv;charset=utf-8'
+                    );
+                }
+                if (filters.format === 'print') {
+                    openPrintableReport(report);
+                }
+            } catch (error) {
+                showToast(error.message || 'Unable to generate the report.', 'error');
+            }
+        }
+
+        function toggleCustomDateInputs() {
+            const isCustom = reportRangeFilter.value === 'custom';
+            reportStartGroup.style.display = isCustom ? '' : 'none';
+            reportEndGroup.style.display = isCustom ? '' : 'none';
+        }
+
+        reportRangeFilter.addEventListener('change', toggleCustomDateInputs);
+        document.getElementById('generate-report').addEventListener('click', generateReport);
+        exportReportButton.addEventListener('click', () => {
+            if (!currentGeneratedReport) {
+                showToast('Generate a report before exporting.', 'info');
+                return;
+            }
+            downloadTextFile(
+                buildCsvContent(currentGeneratedReport),
+                `${sanitizeFilePart(currentGeneratedReport.title)}-${new Date().toISOString().split('T')[0]}.csv`,
+                'text/csv;charset=utf-8'
+            );
+            showToast('Report exported to CSV successfully!', 'success');
         });
+        printReportButton.addEventListener('click', () => {
+            if (!currentGeneratedReport) {
+                showToast('Generate a report before printing.', 'info');
+                return;
+            }
+            openPrintableReport(currentGeneratedReport);
+        });
+        toggleCustomDateInputs();
         
         // Restore data
         document.getElementById('restore-data').addEventListener('click', () => {
