@@ -496,6 +496,11 @@
             return records.filter(record => matchesFilters(record, filters, dateField));
         }
 
+        function getAttendanceBranchContribution(record) {
+            const amount = parseFloat(record?.branchContribution ?? record?.branchOffering);
+            return Number.isFinite(amount) ? amount : 0;
+        }
+
         function sanitizeFilePart(value) {
             return String(value || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'report';
         }
@@ -613,7 +618,8 @@
                 const attendance = collectionData.find(item => item.key === 'attendance').records;
                 const volunteers = collectionData.find(item => item.key === 'volunteers').records;
 
-                const totalGiving = tithes.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+                const totalGiving = tithes.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+                    + attendance.reduce((sum, item) => sum + getAttendanceBranchContribution(item), 0);
                 const totalAttendance = attendance.reduce((sum, item) => sum + (parseInt(item.total, 10) || 0), 0);
                 const today = startOfDay(new Date()).getTime();
                 const upcomingEvents = events.filter(event => {
@@ -751,8 +757,22 @@
                 };
             },
             async tithes(filters) {
-                const records = filterRecords(await fetchCollectionData('tithes'), filters, 'date')
-                    .sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
+                const [titheRecords, attendanceRecords] = await Promise.all([
+                    fetchCollectionData('tithes'),
+                    fetchCollectionData('attendance')
+                ]);
+                const records = [
+                    ...filterRecords(titheRecords, filters, 'date'),
+                    ...filterRecords(attendanceRecords, filters, 'date')
+                        .filter(record => getAttendanceBranchContribution(record) > 0)
+                        .map(record => ({
+                            member: 'Branch Contribution',
+                            type: 'Branch Contribution',
+                            amount: getAttendanceBranchContribution(record),
+                            date: record.date,
+                            branch: record.branch || 'Unspecified'
+                        }))
+                ].sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
                 const totalAmount = records.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
                 const averageGift = records.length ? totalAmount / records.length : 0;
                 return {
@@ -787,7 +807,7 @@
                 const records = filterRecords(await fetchCollectionData('attendance'), filters, 'date')
                     .sort((a, b) => (parseDateValue(b.date)?.getTime() || 0) - (parseDateValue(a.date)?.getTime() || 0));
                 const totalAttendance = records.reduce((sum, record) => sum + (parseInt(record.total, 10) || 0), 0);
-                const totalOffering = records.reduce((sum, record) => sum + (parseFloat(record.branchOffering) || 0), 0);
+                const totalContribution = records.reduce((sum, record) => sum + getAttendanceBranchContribution(record), 0);
                 const averageAttendance = records.length ? Math.round(totalAttendance / records.length) : 0;
                 return {
                     title: 'Attendance Summary',
@@ -796,7 +816,7 @@
                         { label: 'Total Attendance', value: totalAttendance },
                         { label: 'Service Records', value: records.length },
                         { label: 'Average per Service', value: averageAttendance },
-                        { label: 'Branch Offering', value: formatCurrency(totalOffering) }
+                        { label: 'Branch Contribution', value: formatCurrency(totalContribution) }
                     ],
                     chartTitle: 'Attendance by branch',
                     chartItems: toChartItems(buildTotals(records, 'branch', 'total', 'Unspecified')),
@@ -807,6 +827,7 @@
                         { key: 'youth', label: 'Youth' },
                         { key: 'adult', label: 'Adult' },
                         { key: 'sunday', label: 'Sunday School' },
+                        { key: 'branchContribution', label: 'Branch Contribution' },
                         { key: 'total', label: 'Total' }
                     ],
                     rows: records.map(record => ({
@@ -815,6 +836,7 @@
                         youth: record.youth || 0,
                         adult: record.adult || 0,
                         sunday: record.sunday || 0,
+                        branchContribution: formatCurrency(getAttendanceBranchContribution(record)),
                         total: record.total || 0
                     }))
                 };
