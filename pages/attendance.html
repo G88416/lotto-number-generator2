@@ -58,8 +58,8 @@
             <input type="number" id="attendance-adult" placeholder="Adult" min="0"></div>
             <div class="form-row"><label for="attendance-sunday">Sunday School</label>
             <input type="number" id="attendance-sunday" placeholder="Sunday School" min="0"></div>
-            <div class="form-row"><label for="attendance-branch-offering">Branch Contribution (R)</label>
-            <input type="number" id="attendance-branch-offering" placeholder="Branch Contribution" min="0" step="0.01" inputmode="decimal"></div>
+            <div class="form-row"><label for="attendance-branch-contribution">Branch Contribution (R)</label>
+            <input type="number" id="attendance-branch-contribution" placeholder="Branch Contribution" min="0" step="0.01" inputmode="decimal"></div>
             <button type="submit">Log Attendance</button>
         </form>
 
@@ -190,7 +190,7 @@
             document.getElementById('attendance-youth').value = record.youth || '';
             document.getElementById('attendance-adult').value = record.adult || '';
             document.getElementById('attendance-sunday').value = record.sunday || '';
-            document.getElementById('attendance-branch-offering').value = record.branchContribution ?? record.branchOffering ?? '';
+            document.getElementById('attendance-branch-contribution').value = record.branchContribution ?? record.branchOffering ?? '';
             attendanceSubmitBtn.textContent = 'Update Attendance';
             attendanceForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
             showToast('Editing attendance. Update details and submit to save.', 'info');
@@ -201,14 +201,13 @@
             const youth = parseInt(document.getElementById('attendance-youth').value) || 0;
             const adult = parseInt(document.getElementById('attendance-adult').value) || 0;
             const sunday = parseInt(document.getElementById('attendance-sunday').value) || 0;
-            const branchContribution = parseFloat(document.getElementById('attendance-branch-offering').value) || 0;
+            const branchContribution = parseFloat(document.getElementById('attendance-branch-contribution').value) || 0;
             
             const attendanceData = {
                 branch: document.getElementById('attendance-branch').value,
                 date: document.getElementById('attendance-date').value,
                 youth, adult, sunday,
                 branchContribution,
-                branchOffering: branchContribution,
                 total: youth + adult + sunday
             };
             const isEditing = Boolean(editingAttendanceId);

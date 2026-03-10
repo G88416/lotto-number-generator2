@@ -764,11 +764,15 @@
                 const records = [
                     ...filterRecords(titheRecords, filters, 'date'),
                     ...filterRecords(attendanceRecords, filters, 'date')
-                        .filter(record => getAttendanceBranchContribution(record) > 0)
                         .map(record => ({
+                            contributionAmount: getAttendanceBranchContribution(record),
+                            record
+                        }))
+                        .filter(item => item.contributionAmount > 0)
+                        .map(({ contributionAmount, record }) => ({
                             member: 'Branch Contribution',
                             type: 'Branch Contribution',
-                            amount: getAttendanceBranchContribution(record),
+                            amount: contributionAmount,
                             date: record.date,
                             branch: record.branch || 'Unspecified'
                         }))
