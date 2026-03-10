@@ -37,7 +37,7 @@
             <li><a href="finance.html">Finance</a></li>
             <li><a href="admin.html">Admin</a></li>
             <li><a href="attendance.html">Attendance</a></li>
-            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="ministries.html">Ministries</a></li>
             <li><a href="sermons.html">Sermon Library</a></li>
             <li><a href="volunteers.html">Volunteers</a></li>
             <li><a href="media.html">Media Center</a></li>
@@ -68,6 +68,10 @@
             <input type="tel" id="member-cell" placeholder="Cellphone"></div>
             <div class="form-row"><label for="member-email">Email</label>
             <input type="email" id="member-email" placeholder="Email"></div>
+            <div class="form-row"><label for="member-ministry">Ministry</label>
+            <select id="member-ministry">
+                <option value="">Select Ministry</option>
+            </select></div>
             <div class="form-row"><label for="member-branch">Branch</label>
             <input type="text" id="member-branch" placeholder="Branch"></div>
             <button type="submit">Add Member</button>
@@ -90,6 +94,7 @@
                     <th>Age</th>
                     <th>Cell</th>
                     <th>Email</th>
+                    <th>Ministry</th>
                     <th>Branch</th>
                     <th>Actions</th>
                 </tr>
@@ -117,8 +122,36 @@
         const COLLECTION = 'members';
         const memberForm = document.getElementById('add-member-form');
         const memberSubmitBtn = memberForm.querySelector('button[type="submit"]');
+        const memberMinistrySelect = document.getElementById('member-ministry');
         let allMembers = [];
         let editingMemberId = null;
+        let pendingMemberMinistry = '';
+
+        function setMemberMinistryValue(value) {
+            pendingMemberMinistry = value || '';
+            const hasOption = Array.from(memberMinistrySelect.options).some(option => option.value === pendingMemberMinistry);
+            if (!pendingMemberMinistry) {
+                memberMinistrySelect.value = '';
+                return;
+            }
+            if (!hasOption) {
+                const option = document.createElement('option');
+                option.value = pendingMemberMinistry;
+                option.textContent = pendingMemberMinistry;
+                memberMinistrySelect.appendChild(option);
+            }
+            memberMinistrySelect.value = pendingMemberMinistry;
+        }
+
+        function populateMinistryOptions(ministries) {
+            const items = sortMinistries(ministries && ministries.length ? ministries : getDefaultMinistries())
+                .map(item => item.name)
+                .filter(Boolean)
+            memberMinistrySelect.innerHTML = '<option value="">Select Ministry</option>' + items.map((name) =>
+                `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+            ).join('');
+            setMemberMinistryValue(pendingMemberMinistry);
+        }
         
         function renderTable(data) {
             const tbody = document.querySelector('#members-table tbody');
@@ -126,7 +159,7 @@
             updateRecordCount('member-count', data.length);
             
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">No members found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center">No members found.</td></tr>';
                 return;
             }
             
@@ -141,6 +174,7 @@
                     <td>${escapeHtml(member.age)}</td>
                     <td>${escapeHtml(member.cell)}</td>
                     <td>${escapeHtml(member.email)}</td>
+                    <td>${escapeHtml(member.ministry)}</td>
                     <td>${escapeHtml(member.branch)}</td>
                     <td>
                         <button class="btn-secondary edit-action" data-action="edit-member" data-id="${escapeHtml(docId)}">Edit</button>
@@ -162,7 +196,7 @@
         document.getElementById('member-search').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             const filtered = allMembers.filter(m =>
-                [m.name, m.surname, m.id, m.gender, m.cell, m.email, m.branch]
+                [m.name, m.surname, m.id, m.gender, m.cell, m.email, m.ministry, m.branch]
                     .some(v => (v || '').toLowerCase().includes(term))
             );
             renderTable(filtered);
@@ -179,6 +213,7 @@
 
         function resetMemberForm() {
             editingMemberId = null;
+            setMemberMinistryValue('');
             memberSubmitBtn.textContent = 'Add Member';
         }
 
@@ -196,6 +231,7 @@
             document.getElementById('member-age').value = member.age || '';
             document.getElementById('member-cell').value = member.cell || '';
             document.getElementById('member-email').value = member.email || '';
+            setMemberMinistryValue(member.ministry || '');
             document.getElementById('member-branch').value = member.branch || '';
             memberSubmitBtn.textContent = 'Update Member';
             memberForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -212,6 +248,7 @@
                 age: document.getElementById('member-age').value,
                 cell: document.getElementById('member-cell').value,
                 email: document.getElementById('member-email').value,
+                ministry: document.getElementById('member-ministry').value,
                 branch: document.getElementById('member-branch').value
             };
             const isEditing = Boolean(editingMemberId);
@@ -238,11 +275,11 @@
                     return str;
                 };
                 
-                const csv = 'Name,Surname,ID,Gender,Age,Cell,Email,Branch\n' + 
+                const csv = 'Name,Surname,ID,Gender,Age,Cell,Email,Ministry,Branch\n' + 
                     data.map(m => [
                         escapeCSV(m.name), escapeCSV(m.surname), escapeCSV(m.id),
                         escapeCSV(m.gender), escapeCSV(m.age), escapeCSV(m.cell),
-                        escapeCSV(m.email), escapeCSV(m.branch)
+                        escapeCSV(m.email), escapeCSV(m.ministry), escapeCSV(m.branch)
                     ].join(',')).join('\n');
                 const blob = new Blob([csv], {type: 'text/csv'});
                 const url = URL.createObjectURL(blob);
@@ -254,7 +291,10 @@
             });
         });
         
-        populateTable();
+        ensureDefaultMinistries().then(() => {
+            loadFromFirebase('ministries', populateMinistryOptions);
+            populateTable();
+        });
 
         document.getElementById('import-members-btn').addEventListener('click', () => {
             const fileInput = document.getElementById('import-members-file');
@@ -279,6 +319,7 @@
                     age:     getRowField(row, ['age']),
                     cell:    getRowField(row, ['cell', 'cellphone', 'phone', 'mobile', 'contact']),
                     email:   getRowField(row, ['email', 'e-mail', 'email address']),
+                    ministry:getRowField(row, ['ministry', 'department', 'group']),
                     branch:  getRowField(row, ['branch', 'church', 'location'])
                 })).filter(r => r.name || r.surname);
                 if (records.length === 0) {

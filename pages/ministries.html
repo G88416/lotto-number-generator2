@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ministries - Charity and Faith Mission</title>
+    <link rel="stylesheet" href="../common.css">
+    <script src="../common.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="../firebase-config.js"></script>
+    <script>initializeFirebase();</script>
+    <script src="../auth.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Charity and Faith Mission</h1>
+            <p class="subtitle">Ministries</p>
+        </div>
+        <button class="logout-btn" id="logout">Logout 🚪</button>
+    </header>
+    
+    <nav>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+        <ul id="nav-menu">
+            <li><a href="../index.html">Dashboard</a></li>
+            <li><a href="members.html">Members</a></li>
+            <li><a href="visitors.html">Visitors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+            <li><a href="events.html">Events</a></li>
+            <li><a href="tithes.html">Tithes &amp; Offerings</a></li>
+            <li><a href="finance.html">Finance</a></li>
+            <li><a href="admin.html">Admin</a></li>
+            <li><a href="attendance.html">Attendance</a></li>
+            <li><a href="ministries.html" class="active">Ministries</a></li>
+            <li><a href="sermons.html">Sermon Library</a></li>
+            <li><a href="volunteers.html">Volunteers</a></li>
+            <li><a href="media.html">Media Center</a></li>
+            <li><a href="settings.html">Settings</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <h2>📁 Ministries</h2>
+        <p>Organize ministry folders and keep member assignments connected to each ministry.</p>
+
+        <div class="table-toolbar">
+            <h3>Ministry Folders</h3>
+        </div>
+        <div id="ministry-folders" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:15px; margin-bottom:25px;"></div>
+        
+        <form id="add-ministry-form">
+            <div class="form-row"><label for="ministry-name">Ministry Name *</label>
+            <input type="text" id="ministry-name" placeholder="Ministry Name" required></div>
+            <div class="form-row"><label for="ministry-leader">Leader</label>
+            <input type="text" id="ministry-leader" placeholder="Leader"></div>
+            <div class="form-row"><label for="ministry-description">Description</label>
+            <textarea id="ministry-description" placeholder="Description"></textarea></div>
+            <button type="submit">Save Ministry</button>
+        </form>
+
+        <div class="table-toolbar">
+            <h3>Ministries <span class="record-count" id="ministry-count"></span></h3>
+            <div class="search-bar">
+                <input type="search" id="ministry-search" placeholder="Search ministries…" aria-label="Search ministries">
+            </div>
+        </div>
+        
+        <table id="ministries-table">
+            <thead>
+                <tr>
+                    <th>Ministry</th>
+                    <th>Leader</th>
+                    <th>Members</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </main>
+
+    <script>
+        initializeFirebase();
+        setupLogout();
+        document.getElementById('nav-toggle').addEventListener('click', () => {
+            document.getElementById('nav-menu').classList.toggle('open');
+        });
+
+        const COLLECTION = 'ministries';
+        const ministryForm = document.getElementById('add-ministry-form');
+        const ministrySubmitBtn = ministryForm.querySelector('button[type="submit"]');
+        let allMinistries = [];
+        let allMembers = [];
+        let editingMinistryId = null;
+
+        function getMemberCount(ministryName) {
+            const target = normalizeMinistryKey(ministryName);
+            return allMembers.filter(member => normalizeMinistryKey(member.ministry) === target).length;
+        }
+
+        function renderFolderCards(data) {
+            const grid = document.getElementById('ministry-folders');
+            if (!data.length) {
+                grid.innerHTML = '<p style="grid-column:1 / -1; color:#6c757d;">No ministries available yet.</p>';
+                return;
+            }
+
+            grid.innerHTML = data.map((ministry) => {
+                const name = ministry.name || 'Untitled Ministry';
+                const memberCount = getMemberCount(name);
+                return `
+                    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border-radius:12px; padding:18px; box-shadow:0 10px 25px rgba(102,126,234,0.18);">
+                        <div style="font-size:2rem; margin-bottom:10px;">📁</div>
+                        <h4 style="margin:0 0 8px;">${escapeHtml(name)}</h4>
+                        <p style="margin:0 0 12px; opacity:0.92;">${escapeHtml(ministry.description || `${name} ministry`)}</p>
+                        <small style="display:block; opacity:0.95;">${memberCount} member${memberCount === 1 ? '' : 's'}</small>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#ministries-table tbody');
+            tbody.innerHTML = '';
+            updateRecordCount('ministry-count', data.length);
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">No ministries found.</td></tr>';
+                return;
+            }
+
+            data.forEach((ministry) => {
+                const row = document.createElement('tr');
+                const docId = ministry._docId || ministry.id;
+                const memberCount = getMemberCount(ministry.name);
+                row.innerHTML = `
+                    <td>${escapeHtml(ministry.name)}</td>
+                    <td>${escapeHtml(ministry.leader)}</td>
+                    <td>${memberCount}</td>
+                    <td>${escapeHtml(ministry.description)}</td>
+                    <td>
+                        <button class="btn-secondary edit-action" data-action="edit-ministry" data-id="${escapeHtml(docId)}">Edit</button>
+                        <button class="btn-danger" onclick="deleteMinistry('${escapeHtml(docId)}')">Delete</button>
+                    </td>
+                `;
+                row.querySelector('[data-action="edit-ministry"]').addEventListener('click', () => editMinistry(docId));
+                tbody.appendChild(row);
+            });
+        }
+
+        function applyFilters() {
+            const term = document.getElementById('ministry-search').value.toLowerCase();
+            const filtered = allMinistries.filter(ministry =>
+                [ministry.name, ministry.leader, ministry.description]
+                    .some(value => (value || '').toLowerCase().includes(term))
+            );
+            renderFolderCards(filtered);
+            renderTable(filtered);
+        }
+
+        function populateTable() {
+            loadFromFirebase(COLLECTION, (data) => {
+                allMinistries = sortMinistries(data);
+                applyFilters();
+            });
+        }
+
+        document.getElementById('ministry-search').addEventListener('input', applyFilters);
+
+        window.deleteMinistry = function(id) {
+            if (confirm('Are you sure you want to delete this ministry?')) {
+                deleteFromFirebase(COLLECTION, id).then(() => {
+                    showToast('Ministry deleted.', 'success');
+                    populateTable();
+                });
+            }
+        };
+
+        function resetMinistryForm() {
+            editingMinistryId = null;
+            ministrySubmitBtn.textContent = 'Save Ministry';
+        }
+
+        window.editMinistry = function(id) {
+            const ministry = allMinistries.find(item => String(item._docId || item.id) === String(id));
+            if (!ministry) {
+                showToast('Ministry not found for editing.', 'warning');
+                return;
+            }
+            editingMinistryId = id;
+            document.getElementById('ministry-name').value = ministry.name || '';
+            document.getElementById('ministry-leader').value = ministry.leader || '';
+            document.getElementById('ministry-description').value = ministry.description || '';
+            ministrySubmitBtn.textContent = 'Update Ministry';
+            ministryForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showToast('Editing ministry. Update details and submit to save.', 'info');
+        };
+
+        ministryForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ministryData = {
+                name: document.getElementById('ministry-name').value,
+                leader: document.getElementById('ministry-leader').value,
+                description: document.getElementById('ministry-description').value
+            };
+            const isEditing = Boolean(editingMinistryId);
+            const action = isEditing
+                ? updateInFirebase(COLLECTION, editingMinistryId, ministryData)
+                : saveToFirebase(COLLECTION, ministryData);
+
+            action.then(() => {
+                e.target.reset();
+                resetMinistryForm();
+                populateTable();
+                showToast(isEditing ? 'Ministry updated successfully!' : 'Ministry saved successfully!', 'success');
+            });
+        });
+
+        ensureDefaultMinistries().then(() => {
+            populateTable();
+            loadFromFirebase('members', (members) => {
+                allMembers = members;
+                applyFilters();
+            });
+        });
+    </script>
+</body>
+</html>

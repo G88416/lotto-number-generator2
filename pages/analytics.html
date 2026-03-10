@@ -45,7 +45,7 @@
             <li><a href="finance.html">Finance</a></li>
             <li><a href="admin.html">Admin</a></li>
             <li><a href="attendance.html">Attendance</a></li>
-            <li><a href="prayers.html">Prayer Requests</a></li>
+            <li><a href="ministries.html">Ministries</a></li>
             <li><a href="sermons.html">Sermon Library</a></li>
             <li><a href="volunteers.html">Volunteers</a></li>
             <li><a href="media.html">Media Center</a></li>
@@ -83,8 +83,8 @@
                 <div class="value" id="total-volunteers">—</div>
             </div>
             <div class="stat-card" style="background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);">
-                <h3>Prayer Requests</h3>
-                <div class="value" id="total-prayers">—</div>
+                <h3>Total Ministries</h3>
+                <div class="value" id="total-ministries">—</div>
             </div>
             <div class="stat-card" style="background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);">
                 <h3>Sermons Archived</h3>
@@ -100,9 +100,9 @@
         </div>
 
         <div class="analytics-section">
-            <h3>Prayer Request Status</h3>
-            <div class="bar-chart" id="prayer-chart">
-                <p style="color:#6c757d;">Loading prayer data…</p>
+            <h3>Members per Ministry</h3>
+            <div class="bar-chart" id="ministry-chart">
+                <p style="color:#6c757d;">Loading ministry data…</p>
             </div>
         </div>
     </main>
@@ -167,24 +167,33 @@
                 document.getElementById('total-volunteers').textContent = volunteers.length;
             });
 
-            loadFromFirebase('prayers', (prayers) => {
-                document.getElementById('total-prayers').textContent = prayers.length;
-                // Status chart
-                const statuses = { Pending: 0, Praying: 0, Answered: 0 };
-                prayers.forEach(p => {
-                    if (statuses[p.status] !== undefined) statuses[p.status]++;
-                    else statuses['Pending']++;
+            ensureDefaultMinistries().then((defaultMinistries) => {
+                loadFromFirebase('ministries', (ministries) => {
+                    const ministryItems = sortMinistries(ministries.length ? ministries : defaultMinistries);
+                    document.getElementById('total-ministries').textContent = ministryItems.length;
+
+                    loadFromFirebase('members', (members) => {
+                        const totals = {};
+                        ministryItems.forEach((ministry) => {
+                            totals[ministry.name] = 0;
+                        });
+                        members.forEach((member) => {
+                            const ministryName = member.ministry || 'Unassigned';
+                            totals[ministryName] = (totals[ministryName] || 0) + 1;
+                        });
+                        const chartEl = document.getElementById('ministry-chart');
+                        const maxVal = Math.max(...Object.values(totals), 1);
+                        const colors = [
+                            'linear-gradient(135deg,#8e2de2,#4a00e0)',
+                            'linear-gradient(135deg,#4facfe,#00f2fe)',
+                            'linear-gradient(135deg,#56ab2f,#a8e063)',
+                            'linear-gradient(135deg,#fc4a1a,#f7b733)'
+                        ];
+                        chartEl.innerHTML = Object.entries(totals).map(([name, total], index) =>
+                            makeBar(name, total, maxVal, colors[index % colors.length])
+                        ).join('');
+                    });
                 });
-                const maxVal = Math.max(...Object.values(statuses), 1);
-                const chartEl = document.getElementById('prayer-chart');
-                const statusColors = {
-                    Pending:  'linear-gradient(135deg,#ffc107,#fd7e14)',
-                    Praying:  'linear-gradient(135deg,#4facfe,#2196f3)',
-                    Answered: 'linear-gradient(135deg,#28a745,#20c997)'
-                };
-                chartEl.innerHTML = Object.entries(statuses).map(([k, v]) =>
-                    makeBar(k, v, maxVal, statusColors[k])
-                ).join('');
             });
 
             loadFromFirebase('sermons', (sermons) => {
