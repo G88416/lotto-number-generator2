@@ -7,25 +7,25 @@
 const ROLE_PERMISSIONS = {
     admin: {
         name: 'Admin',
-        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
+        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'conference', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
         canEdit: true,
         canDelete: true
     },
     genesis: {
         name: 'Genesis Service',
-        pages: ['members', 'visitors', 'tithes', 'finance', 'attendance', 'events', 'media'],
+        pages: ['members', 'visitors', 'tithes', 'finance', 'attendance', 'events', 'conference', 'media'],
         canEdit: true,
         canDelete: true
     },
     branch: {
         name: 'Branch Co',
-        pages: ['members', 'visitors', 'tithes', 'finance', 'attendance'],
+        pages: ['members', 'visitors', 'tithes', 'finance', 'attendance', 'conference'],
         canEdit: true,
         canDelete: true
     },
     pastor: {
         name: 'Pastors Info',
-        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
+        pages: ['members', 'visitors', 'analytics', 'events', 'tithes', 'conference', 'finance', 'admin', 'attendance', 'ministries', 'sermons', 'volunteers', 'media', 'settings'],
         canEdit: true,
         canDelete: false
     }
