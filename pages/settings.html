@@ -390,14 +390,27 @@
         }
 
         function countUnique(records, field, fallback = 'Unspecified') {
-            return new Set(records.map(record => String(record[field] || fallback).trim())).size;
+            const values = records.reduce((items, record) => {
+                if (field === 'ministry') {
+                    const ministries = getMemberMinistries(record[field]);
+                    return items.concat(ministries.length ? ministries : [fallback]);
+                }
+                return items.concat(String(record[field] || fallback).trim());
+            }, []);
+            return new Set(values.map(value => String(value).trim() || fallback)).size;
         }
 
         function buildCounts(records, field, fallback = 'Unspecified') {
             const totals = {};
             records.forEach(record => {
-                const key = String(record[field] || fallback).trim() || fallback;
-                totals[key] = (totals[key] || 0) + 1;
+                const ministryValues = field === 'ministry' ? getMemberMinistries(record[field]) : null;
+                const values = ministryValues
+                    ? (ministryValues.length ? ministryValues : [fallback])
+                    : [String(record[field] || fallback).trim() || fallback];
+                values.forEach((value) => {
+                    const key = String(value).trim() || fallback;
+                    totals[key] = (totals[key] || 0) + 1;
+                });
             });
             return totals;
         }
@@ -683,7 +696,7 @@
                     rows: records.map(member => ({
                         name: member.name || '—',
                         surname: member.surname || '—',
-                        ministry: member.ministry || 'Unassigned',
+                        ministry: formatMemberMinistries(member.ministry, 'Unassigned'),
                         branch: member.branch || 'Unspecified',
                         contact: member.cell || member.email || '—'
                     }))

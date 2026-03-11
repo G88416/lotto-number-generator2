@@ -99,8 +99,10 @@
 
         function buildMemberCounts() {
             return allMembers.reduce((counts, member) => {
-                const key = normalizeMinistryKey(member.ministry);
-                if (key) counts[key] = (counts[key] || 0) + 1;
+                getMemberMinistries(member.ministry).forEach((ministry) => {
+                    const key = normalizeMinistryKey(ministry);
+                    if (key) counts[key] = (counts[key] || 0) + 1;
+                });
                 return counts;
             }, {});
         }

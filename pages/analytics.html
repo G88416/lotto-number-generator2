@@ -178,8 +178,14 @@
                             totals[ministry.name] = 0;
                         });
                         members.forEach((member) => {
-                            const ministryName = member.ministry || 'Unassigned';
-                            totals[ministryName] = (totals[ministryName] || 0) + 1;
+                            const ministryNames = getMemberMinistries(member.ministry);
+                            if (!ministryNames.length) {
+                                totals.Unassigned = (totals.Unassigned || 0) + 1;
+                                return;
+                            }
+                            ministryNames.forEach((ministryName) => {
+                                totals[ministryName] = (totals[ministryName] || 0) + 1;
+                            });
                         });
                         const chartEl = document.getElementById('ministry-chart');
                         const maxVal = Math.max(...Object.values(totals), 1);

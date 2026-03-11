@@ -286,6 +286,21 @@ function normalizeMinistryKey(value) {
     return String(value || '').trim().toLowerCase();
 }
 
+function getMemberMinistries(value) {
+    const items = Array.isArray(value)
+        ? value
+        : String(value || '')
+            .split(/[;,]/)
+            .map(item => item.trim())
+            .filter(Boolean);
+    return [...new Set(items.map(item => String(item || '').trim()).filter(Boolean))];
+}
+
+function formatMemberMinistries(value, fallback = '') {
+    const items = getMemberMinistries(value);
+    return items.length ? items.join(', ') : fallback;
+}
+
 function getDefaultMinistries() {
     return DEFAULT_MINISTRY_NAMES.map((name, index) => ({
         name,
