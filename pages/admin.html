@@ -84,6 +84,7 @@
         });
 
         const COLLECTION = 'leaders';
+        const LOCAL_STORAGE_ID_PATTERN = /^\d+$/;
         const leaderForm = document.getElementById('add-leader-form');
         const leaderSubmitBtn = leaderForm.querySelector('button[type="submit"]');
         let allLeaders = [];
@@ -94,19 +95,21 @@
                 return saveToFirebase(COLLECTION, leaderData);
             }
 
-            const existingLeader = allLeaders.find(l => String(l._docId || l.id) === String(editingLeaderId)) || {};
-            if (db && typeof editingLeaderId === 'string' && !editingLeaderId.match(/^\d+$/)) {
+            if (db && typeof editingLeaderId === 'string' && !LOCAL_STORAGE_ID_PATTERN.test(editingLeaderId)) {
                 return db.collection(COLLECTION).doc(editingLeaderId).set({
                     ...leaderData,
-                    createdAt: existingLeader.createdAt || firebase.firestore.FieldValue.serverTimestamp()
-                });
+                    email: firebase.firestore.FieldValue.delete(),
+                    phone: firebase.firestore.FieldValue.delete()
+                }, { merge: true });
             }
 
             const key = `charity_${COLLECTION}`;
             const data = JSON.parse(localStorage.getItem(key) || '[]');
             const numericId = typeof editingLeaderId === 'number' ? editingLeaderId : parseInt(editingLeaderId, 10);
             if (!Number.isNaN(numericId) && data[numericId]) {
-                data[numericId] = leaderData;
+                const currentRecord = data[numericId] || {};
+                const { email: _email, phone: _phone, ...remainingFields } = currentRecord;
+                data[numericId] = { ...remainingFields, ...leaderData };
                 localStorage.setItem(key, JSON.stringify(data));
             }
             return Promise.resolve();

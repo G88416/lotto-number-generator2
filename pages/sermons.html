@@ -285,7 +285,7 @@
                     return;
                 }
                 const records = rows.map(row => ({
-                    folder:  normalizeSermonFolder(getRowField(row, ['folder', 'category', 'type'])),
+                    folder: normalizeSermonFolder(getRowField(row, ['folder', 'category', 'type'])),
                     title:   getRowField(row, ['title', 'sermon title', 'sermon name', 'name']),
                     speaker: getRowField(row, ['speaker', 'preacher', 'pastor', 'minister']),
                     date:    getRowField(row, ['date', 'sermon date']),
