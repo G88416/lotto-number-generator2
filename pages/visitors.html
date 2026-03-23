@@ -90,10 +90,13 @@
         </table>
         
         <button id="send-followup" class="btn-secondary" style="margin-top:15px;">Send Follow-up Messages</button>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-visitors-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-visitors-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -211,6 +214,29 @@
         
         document.getElementById('send-followup').addEventListener('click', () => {
             showToast('Follow-up feature coming soon!', 'info');
+        });
+
+        function getVisitorExportRows() {
+            return allVisitors.map(v => [
+                v.name || '', v.email || '', v.cell || '',
+                v.address || '', formatDate(v.date), v.branch || '', v.notes || ''
+            ]);
+        }
+
+        document.getElementById('export-visitors-pdf').addEventListener('click', () => {
+            exportToPDF('Visitor List',
+                ['Name', 'Email', 'Cell', 'Address', 'Date', 'Branch', 'Notes'],
+                getVisitorExportRows()
+            );
+        });
+
+        document.getElementById('export-visitors-word').addEventListener('click', () => {
+            exportToWord('Visitor List',
+                ['Name', 'Email', 'Cell', 'Address', 'Date', 'Branch', 'Notes'],
+                getVisitorExportRows(),
+                'visitors'
+            );
+            showToast('Visitors exported to Word!', 'info');
         });
         
         populateTable();

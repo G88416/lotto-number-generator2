@@ -103,7 +103,9 @@
             <tbody></tbody>
         </table>
         
-        <button id="export-members" class="btn-secondary" style="margin-top:15px;">Export Members to CSV</button>
+        <button id="export-members" class="btn-secondary" style="margin-top:15px;">📊 Export Members to CSV</button>
+        <button id="export-members-pdf" class="btn-secondary" style="margin-top:15px;">📄 Export PDF</button>
+        <button id="export-members-word" class="btn-secondary" style="margin-top:15px;">📝 Export Word</button>
 
         <div class="import-section" style="margin-top:15px;">
             <label for="import-members-file">📤 Import Members:</label>
@@ -114,7 +116,6 @@
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -297,6 +298,30 @@
                 a.click();
                 showToast('Members exported to CSV!', 'info');
             });
+        });
+
+        function getMembersExportRows() {
+            return allMembers.map(m => [
+                m.name || '', m.surname || '', m.id || '', m.gender || '',
+                m.age || '', m.cell || '', m.email || '',
+                formatMemberMinistries(m.ministry, ''), m.branch || ''
+            ]);
+        }
+
+        document.getElementById('export-members-pdf').addEventListener('click', () => {
+            exportToPDF('Member Directory',
+                ['Name', 'Surname', 'ID', 'Gender', 'Age', 'Cell', 'Email', 'Ministries', 'Branch'],
+                getMembersExportRows()
+            );
+        });
+
+        document.getElementById('export-members-word').addEventListener('click', () => {
+            exportToWord('Member Directory',
+                ['Name', 'Surname', 'ID', 'Gender', 'Age', 'Cell', 'Email', 'Ministries', 'Branch'],
+                getMembersExportRows(),
+                'members'
+            );
+            showToast('Members exported to Word!', 'info');
         });
         
         ensureDefaultMinistries().then(() => {

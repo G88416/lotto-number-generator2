@@ -357,6 +357,79 @@ function ensureDefaultMinistries() {
 }
 
 /**
+ * Export tabular data as a print-ready page (user saves as PDF via the browser print dialog).
+ * @param {string} title - Document title shown as heading
+ * @param {string[]} headers - Column header labels
+ * @param {string[][]} rows - Data rows; each element is an array of cell values
+ */
+function exportToPDF(title, headers, rows) {
+    const headerCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+    const bodyRows = rows.map(r =>
+        `<tr>${r.map(c => `<td>${escapeHtml(String(c == null ? '' : c))}</td>`).join('')}</tr>`
+    ).join('');
+    const count = rows.length;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${escapeHtml(title)}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:24px;color:#333;}
+  h1{color:#2a5298;font-size:18px;margin-bottom:4px;}
+  p.meta{font-size:11px;color:#666;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  th{background:#667eea;color:#fff;padding:7px 9px;text-align:left;border:1px solid #5a6fd4;}
+  td{padding:6px 9px;border:1px solid #ddd;}
+  tr:nth-child(even) td{background:#f8f9ff;}
+  @media print{body{margin:0;}}
+</style></head><body>
+<h1>${escapeHtml(title)}</h1>
+<p class="meta">Exported: ${new Date().toLocaleDateString()} &nbsp;|&nbsp; ${count} record${count === 1 ? '' : 's'}</p>
+<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
+<script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+    const win = window.open('', '_blank');
+    if (win) {
+        win.document.write(html);
+        win.document.close();
+    } else {
+        showToast('Pop-up blocked. Please allow pop-ups to export PDF.', 'warning');
+    }
+}
+
+/**
+ * Export tabular data as a Word document (.doc) by downloading an HTML blob.
+ * @param {string} title - Document title shown as heading
+ * @param {string[]} headers - Column header labels
+ * @param {string[][]} rows - Data rows; each element is an array of cell values
+ * @param {string} filename - Output filename without extension
+ */
+function exportToWord(title, headers, rows, filename) {
+    const headerCells = headers.map(h =>
+        `<th style="background:#667eea;color:#fff;border:1px solid #5a6fd4;padding:7px 9px;text-align:left;">${escapeHtml(h)}</th>`
+    ).join('');
+    const bodyRows = rows.map(r =>
+        `<tr>${r.map(c => `<td style="border:1px solid #ddd;padding:6px 9px;">${escapeHtml(String(c == null ? '' : c))}</td>`).join('')}</tr>`
+    ).join('');
+    const count = rows.length;
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:w="urn:schemas-microsoft-com:office:word"
+ xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+<style>body{font-family:Arial,sans-serif;margin:24px;}h1{color:#2a5298;}
+table{border-collapse:collapse;width:100%;font-size:11pt;}</style>
+</head><body>
+<h1>${escapeHtml(title)}</h1>
+<p>Exported: ${new Date().toLocaleDateString()} &mdash; ${count} record${count === 1 ? '' : 's'}</p>
+<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
+</body></html>`;
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (filename || 'export') + '.doc';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+/**
  * Read locally-managed application users from localStorage.
  * These are users created via Settings → User Management when Firebase is
  * unavailable or the admin is authenticated through the demo fallback.

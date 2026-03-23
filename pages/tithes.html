@@ -109,10 +109,13 @@
             <button type="button" id="import-tithes-btn" class="btn-import">Import</button>
             <span class="import-status" id="import-tithes-status" aria-live="polite"></span>
         </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-tithes-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-tithes-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -303,6 +306,32 @@
                     statusEl.textContent = '❌ Some records failed to save. Please try again.';
                 });
             });
+        });
+
+        function getTithesExportRows() {
+            return allTithes.map(t => [
+                t.member || '',
+                formatContributionType(t.type),
+                'R ' + parseFloat(t.amount || 0).toFixed(2),
+                formatDate(t.date),
+                t.branch || ''
+            ]);
+        }
+
+        document.getElementById('export-tithes-pdf').addEventListener('click', () => {
+            exportToPDF('Tithes & Offerings',
+                ['Member', 'Type', 'Amount', 'Date', 'Branch'],
+                getTithesExportRows()
+            );
+        });
+
+        document.getElementById('export-tithes-word').addEventListener('click', () => {
+            exportToWord('Tithes & Offerings',
+                ['Member', 'Type', 'Amount', 'Date', 'Branch'],
+                getTithesExportRows(),
+                'tithes-offerings'
+            );
+            showToast('Tithes & Offerings exported to Word!', 'info');
         });
     </script>
 </body>

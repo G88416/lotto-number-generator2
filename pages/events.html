@@ -91,10 +91,13 @@
             <button type="button" id="import-events-btn" class="btn-import">Import</button>
             <span class="import-status" id="import-events-status" aria-live="polite"></span>
         </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-events-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-events-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -241,6 +244,22 @@
                     statusEl.textContent = '❌ Some records failed to save. Please try again.';
                 });
             });
+        });
+
+        function getEventsExportRows() {
+            return allEvents.map(ev => [
+                ev.title || '', ev.desc || '', formatDate(ev.date),
+                ev.branch || '', ev.organizer || ''
+            ]);
+        }
+
+        document.getElementById('export-events-pdf').addEventListener('click', () => {
+            exportToPDF('Events', ['Title', 'Description', 'Date', 'Branch', 'Organizer'], getEventsExportRows());
+        });
+
+        document.getElementById('export-events-word').addEventListener('click', () => {
+            exportToWord('Events', ['Title', 'Description', 'Date', 'Branch', 'Organizer'], getEventsExportRows(), 'events');
+            showToast('Events exported to Word!', 'info');
         });
     </script>
 </body>
