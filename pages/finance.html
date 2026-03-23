@@ -155,6 +155,10 @@
                     <tr><td colspan="8" style="text-align:center">Loading…</td></tr>
                 </tbody>
             </table>
+            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="export-income-pdf" class="btn-secondary">📄 Export PDF</button>
+                <button id="export-income-word" class="btn-secondary">📝 Export Word</button>
+            </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════
@@ -232,6 +236,10 @@
                 </thead>
                 <tbody id="expenses-tbody"></tbody>
             </table>
+            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="export-expenses-pdf" class="btn-secondary">📄 Export PDF</button>
+                <button id="export-expenses-word" class="btn-secondary">📝 Export Word</button>
+            </div>
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════
@@ -328,6 +336,10 @@
                 </thead>
                 <tbody id="requisitions-tbody"></tbody>
             </table>
+            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="export-requisitions-pdf" class="btn-secondary">📄 Export PDF</button>
+                <button id="export-requisitions-word" class="btn-secondary">📝 Export Word</button>
+            </div>
         </div>
     </main>
 
@@ -336,7 +348,6 @@
     </footer>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -843,6 +854,101 @@
         });
         populateExpenses();
         populateRequisitions();
+
+        /* ── Export helpers ── */
+        function getIncomeExportRows() {
+            const yearFilter = document.getElementById('income-year-filter').value;
+            const incomeByMonth = {};
+            allTithes.forEach(t => {
+                const key = getMonthKey(t.date);
+                if (!key || (yearFilter && !key.startsWith(yearFilter))) return;
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
+                incomeByMonth[key][normalizeIncomeType(t.type)] += parseFloat(t.amount) || 0;
+            });
+            allAttendance.forEach(r => {
+                const bc = getBranchContributionValue(r);
+                if (!bc) return;
+                const key = getMonthKey(r.date);
+                if (!key || (yearFilter && !key.startsWith(yearFilter))) return;
+                if (!incomeByMonth[key]) incomeByMonth[key] = { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
+                incomeByMonth[key].BranchContribution += bc;
+            });
+            const expenseByMonth = {};
+            allExpenses.forEach(e => {
+                const key = getMonthKey(e.date);
+                if (!key || (yearFilter && !key.startsWith(yearFilter))) return;
+                expenseByMonth[key] = (expenseByMonth[key] || 0) + (parseFloat(e.amount) || 0);
+            });
+            const allKeys = new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)]);
+            return Array.from(allKeys).sort().reverse().map(key => {
+                const inc = incomeByMonth[key] || { Tithe:0, Offering:0, BranchContribution:0, EFT:0 };
+                const totalInc = inc.Tithe + inc.Offering + inc.BranchContribution + inc.EFT;
+                const totalExp = expenseByMonth[key] || 0;
+                const [year, month] = key.split('-');
+                return [
+                    `${MONTHS[parseInt(month,10)-1]} ${year}`,
+                    'R ' + inc.Tithe.toFixed(2),
+                    'R ' + inc.Offering.toFixed(2),
+                    'R ' + inc.BranchContribution.toFixed(2),
+                    'R ' + inc.EFT.toFixed(2),
+                    'R ' + totalInc.toFixed(2),
+                    'R ' + totalExp.toFixed(2),
+                    'R ' + (totalInc - totalExp).toFixed(2)
+                ];
+            });
+        }
+
+        document.getElementById('export-income-pdf').addEventListener('click', () => {
+            exportToPDF('Monthly Income Summary',
+                ['Month', 'Tithes', 'Missions Offering', 'Branch Contribution', 'EFT', 'Total Income', 'Total Expenses', 'Net Balance'],
+                getIncomeExportRows()
+            );
+        });
+
+        document.getElementById('export-income-word').addEventListener('click', () => {
+            exportToWord('Monthly Income Summary',
+                ['Month', 'Tithes', 'Missions Offering', 'Branch Contribution', 'EFT', 'Total Income', 'Total Expenses', 'Net Balance'],
+                getIncomeExportRows(),
+                'monthly-income'
+            );
+            showToast('Monthly income exported to Word!', 'info');
+        });
+
+        document.getElementById('export-expenses-pdf').addEventListener('click', () => {
+            exportToPDF('Expenses',
+                ['Date', 'Description', 'Category', 'Amount (R)', 'Approved By'],
+                allExpenses.map(e => [formatDate(e.date), e.description || '', e.category || '',
+                    'R ' + parseFloat(e.amount || 0).toFixed(2), e.approvedBy || ''])
+            );
+        });
+
+        document.getElementById('export-expenses-word').addEventListener('click', () => {
+            exportToWord('Expenses',
+                ['Date', 'Description', 'Category', 'Amount (R)', 'Approved By'],
+                allExpenses.map(e => [formatDate(e.date), e.description || '', e.category || '',
+                    'R ' + parseFloat(e.amount || 0).toFixed(2), e.approvedBy || '']),
+                'expenses'
+            );
+            showToast('Expenses exported to Word!', 'info');
+        });
+
+        document.getElementById('export-requisitions-pdf').addEventListener('click', () => {
+            exportToPDF('Payment Requisitions',
+                ['Date Required', 'Requested By', 'Purpose', 'Category', 'Amount (R)', 'Payee', 'Status'],
+                allRequisitions.map(r => [formatDate(r.dateRequired), r.requestor || '', r.purpose || '',
+                    r.category || '', 'R ' + parseFloat(r.amount || 0).toFixed(2), r.payee || '', r.status || ''])
+            );
+        });
+
+        document.getElementById('export-requisitions-word').addEventListener('click', () => {
+            exportToWord('Payment Requisitions',
+                ['Date Required', 'Requested By', 'Purpose', 'Category', 'Amount (R)', 'Payee', 'Status'],
+                allRequisitions.map(r => [formatDate(r.dateRequired), r.requestor || '', r.purpose || '',
+                    r.category || '', 'R ' + parseFloat(r.amount || 0).toFixed(2), r.payee || '', r.status || '']),
+                'payment-requisitions'
+            );
+            showToast('Payment requisitions exported to Word!', 'info');
+        });
     </script>
 </body>
 </html>

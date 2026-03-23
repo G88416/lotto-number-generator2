@@ -82,10 +82,13 @@
             </thead>
             <tbody></tbody>
         </table>
+        <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-ministries-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-ministries-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -233,6 +236,25 @@
                 allMembers = members;
                 applyFilters();
             });
+        });
+
+        function getMinistriesExportRows() {
+            const memberCounts = buildMemberCounts();
+            return allMinistries.map(m => [
+                m.name || '',
+                m.leader || '',
+                memberCounts[normalizeMinistryKey(m.name)] || 0,
+                m.description || ''
+            ]);
+        }
+
+        document.getElementById('export-ministries-pdf').addEventListener('click', () => {
+            exportToPDF('Ministries', ['Ministry', 'Leader', 'Members', 'Description'], getMinistriesExportRows());
+        });
+
+        document.getElementById('export-ministries-word').addEventListener('click', () => {
+            exportToWord('Ministries', ['Ministry', 'Leader', 'Members', 'Description'], getMinistriesExportRows(), 'ministries');
+            showToast('Ministries exported to Word!', 'info');
         });
     </script>
 </body>

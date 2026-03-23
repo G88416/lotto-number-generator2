@@ -87,10 +87,13 @@
             </thead>
             <tbody></tbody>
         </table>
+        <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-volunteers-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-volunteers-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -200,6 +203,28 @@
         });
         
         populateTable();
+
+        function getVolunteersExportRows() {
+            return allVolunteers.map(v => [
+                v.name || '', v.role || '', v.contact || '', v.email || '', v.availability || ''
+            ]);
+        }
+
+        document.getElementById('export-volunteers-pdf').addEventListener('click', () => {
+            exportToPDF('Volunteers',
+                ['Name', 'Role', 'Contact', 'Email', 'Availability'],
+                getVolunteersExportRows()
+            );
+        });
+
+        document.getElementById('export-volunteers-word').addEventListener('click', () => {
+            exportToWord('Volunteers',
+                ['Name', 'Role', 'Contact', 'Email', 'Availability'],
+                getVolunteersExportRows(),
+                'volunteers'
+            );
+            showToast('Volunteers exported to Word!', 'info');
+        });
     </script>
 </body>
 </html>

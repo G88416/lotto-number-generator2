@@ -144,6 +144,12 @@
                 <tbody></tbody>
             </table>
 
+            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button id="export-conference-csv" class="btn-secondary">📊 Export CSV</button>
+                <button id="export-conference-pdf" class="btn-secondary">📄 Export PDF</button>
+                <button id="export-conference-word" class="btn-secondary">📝 Export Word</button>
+            </div>
+
             <div class="import-section" style="margin-top:15px;">
                 <label for="import-conference-file">📤 Import Contributions:</label>
                 <input type="file" id="import-conference-file" accept=".csv,.xlsx,.xls,.docx" aria-label="Choose file to import conference contributions">
@@ -154,7 +160,6 @@
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -377,6 +382,61 @@
                     statusEl.textContent = '❌ Some records failed to save. Please try again.';
                 });
             });
+        });
+
+        function getConferenceExportRows() {
+            return getFilteredConferenceRecords().map(r => [
+                r.member || '',
+                normalizeContributionType(r.type),
+                'R ' + parseFloat(r.amount || 0).toFixed(2),
+                formatDate(r.date),
+                r.branch || '',
+                r.conferenceName || getActiveConferenceName()
+            ]);
+        }
+
+        document.getElementById('export-conference-csv').addEventListener('click', () => {
+            const records = getFilteredConferenceRecords();
+            const escapeCSV = v => {
+                if (v == null) return '';
+                const s = String(v);
+                return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+            };
+            const csv = 'Member,Type,Amount,Date,Branch,Conference\n' +
+                records.map(r => [
+                    escapeCSV(r.member),
+                    escapeCSV(normalizeContributionType(r.type)),
+                    escapeCSV(parseFloat(r.amount || 0).toFixed(2)),
+                    escapeCSV(r.date),
+                    escapeCSV(r.branch),
+                    escapeCSV(r.conferenceName || getActiveConferenceName())
+                ].join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${activeConferenceKey}-conference.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Conference contributions exported to CSV!', 'info');
+        });
+
+        document.getElementById('export-conference-pdf').addEventListener('click', () => {
+            exportToPDF(
+                getActiveConferenceName() + ' Contributions',
+                ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
+                getConferenceExportRows()
+            );
+        });
+
+        document.getElementById('export-conference-word').addEventListener('click', () => {
+            exportToWord(
+                getActiveConferenceName() + ' Contributions',
+                ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
+                getConferenceExportRows(),
+                `${activeConferenceKey}-conference`
+            );
+            showToast('Conference contributions exported to Word!', 'info');
         });
     </script>
 </body>

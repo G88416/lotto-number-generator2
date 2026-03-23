@@ -82,7 +82,6 @@
         <div class="table-toolbar" style="margin-top:15px;">
             <h3>Attendance Records <span class="record-count" id="att-count"></span></h3>
         </div>
-        
         <table id="attendance-table">
             <thead>
                 <tr>
@@ -98,10 +97,13 @@
             </thead>
             <tbody></tbody>
         </table>
+        <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="export-attendance-pdf" class="btn-secondary">📄 Export PDF</button>
+            <button id="export-attendance-word" class="btn-secondary">📝 Export Word</button>
+        </div>
     </main>
 
     <script>
-        initializeFirebase();
         setupLogout();
         document.getElementById('nav-toggle').addEventListener('click', () => {
             document.getElementById('nav-menu').classList.toggle('open');
@@ -225,6 +227,36 @@
         });
         
         populateTable();
+
+        function getAttendanceExportRows() {
+            return allAttendance.map(r => {
+                const youth = parseInt(r.youth) || 0;
+                const adult = parseInt(r.adult) || 0;
+                const sunday = parseInt(r.sunday) || 0;
+                return [
+                    r.branch || '', formatDate(r.date),
+                    youth, adult, sunday,
+                    'R ' + getBranchContribution(r).toFixed(2),
+                    youth + adult + sunday
+                ];
+            });
+        }
+
+        document.getElementById('export-attendance-pdf').addEventListener('click', () => {
+            exportToPDF('Attendance Records',
+                ['Branch', 'Date', 'Youth', 'Adult', 'Sunday School', 'Branch Contribution (R)', 'Total'],
+                getAttendanceExportRows()
+            );
+        });
+
+        document.getElementById('export-attendance-word').addEventListener('click', () => {
+            exportToWord('Attendance Records',
+                ['Branch', 'Date', 'Youth', 'Adult', 'Sunday School', 'Branch Contribution (R)', 'Total'],
+                getAttendanceExportRows(),
+                'attendance'
+            );
+            showToast('Attendance exported to Word!', 'info');
+        });
     </script>
 </body>
 </html>
