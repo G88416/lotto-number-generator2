@@ -91,7 +91,8 @@
         <div class="tab-nav">
             <button class="tab-btn active" data-conference="easter">Easter Conference</button>
             <button class="tab-btn" data-conference="september">September Conference</button>
-            <button class="tab-btn" data-panel="budget">💰 Budget</button>
+            <button class="tab-btn" data-panel="easter-budget">💰 Easter Budget</button>
+            <button class="tab-btn" data-panel="september-budget">💰 September Budget</button>
         </div>
 
         <div id="panel-contributions" class="tab-panel active">
@@ -172,7 +173,7 @@
              BUDGET TAB
         ═══════════════════════════════════════════════════════════ -->
         <div id="panel-budget" class="tab-panel">
-            <h3 style="color:#2a5298;margin-bottom:12px;">💰 Conference Budget</h3>
+            <h3 id="budget-heading" style="color:#2a5298;margin-bottom:12px;">💰 Easter Budget</h3>
             <p style="margin-bottom:16px;color:#555;">Add budget items with a title, quantity and unit amount. The total updates automatically as items are added.</p>
 
             <form id="add-budget-form">
@@ -337,14 +338,18 @@
             refreshConferenceView();
         }
 
-        function setActiveBudgetPanel() {
+        function setActiveBudgetPanel(key) {
+            activeBudgetKey = key || 'easter';
+            document.getElementById('budget-heading').textContent = '💰 ' + CONFERENCES[activeBudgetKey] + ' Budget';
             // Show budget panel, hide contributions panel
             document.getElementById('panel-contributions').classList.remove('active');
             document.getElementById('panel-budget').classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.panel === 'budget');
+                btn.classList.toggle('active', btn.dataset.panel === activeBudgetKey + '-budget');
             });
+            allBudgetItems = budgetCache[activeBudgetKey] || [];
             renderBudget(allBudgetItems);
+            populateBudget(activeBudgetKey);
         }
 
         function populateTable() {
@@ -356,8 +361,10 @@
 
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                if (btn.dataset.panel === 'budget') {
-                    setActiveBudgetPanel();
+                if (btn.dataset.panel === 'easter-budget') {
+                    setActiveBudgetPanel('easter');
+                } else if (btn.dataset.panel === 'september-budget') {
+                    setActiveBudgetPanel('september');
                 } else if (btn.dataset.conference) {
                     setActiveConference(btn.dataset.conference);
                 }
@@ -422,7 +429,6 @@
         });
 
         populateTable();
-        populateBudget();
 
         document.getElementById('import-conference-btn').addEventListener('click', () => {
             const fileInput = document.getElementById('import-conference-file');
@@ -483,14 +489,101 @@
             ]);
         }
 
+        function getBudgetExportRows(budgetData) {
+            let grandTotal = 0;
+            const rows = (budgetData || []).map((item, index) => {
+                const qty = parseFloat(item.quantity) || 0;
+                const unitAmt = parseFloat(item.amount) || 0;
+                const lineTotal = qty * unitAmt;
+                grandTotal += lineTotal;
+                return [(index + 1).toString(), item.title || '', qty.toString(), 'R ' + unitAmt.toFixed(2), 'R ' + lineTotal.toFixed(2)];
+            });
+            rows.push(['', 'Grand Total', '', '', 'R ' + grandTotal.toFixed(2)]);
+            return rows;
+        }
+
+        function exportConferencePDF(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows) {
+            function buildTable(headers, rows) {
+                const headerCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+                const bodyRows = rows.map(r =>
+                    `<tr>${r.map(c => `<td>${escapeHtml(String(c == null ? '' : c))}</td>`).join('')}</tr>`
+                ).join('');
+                return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+            }
+            const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(conferenceName)}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:24px;color:#333;}
+  h1{color:#2a5298;font-size:18px;margin-bottom:4px;}
+  h2{color:#2a5298;font-size:15px;margin-top:24px;margin-bottom:8px;}
+  p.meta{font-size:11px;color:#666;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;}
+  th{background:#667eea;color:#fff;padding:7px 9px;text-align:left;border:1px solid #5a6fd4;}
+  td{padding:6px 9px;border:1px solid #ddd;}
+  tr:nth-child(even) td{background:#f8f9ff;}
+  @media print{body{margin:0;}}
+</style></head><body>
+<h1>${escapeHtml(conferenceName)}</h1>
+<p class="meta">Exported: ${new Date().toLocaleDateString()}</p>
+<h2>Contributions (${contribRows.length} record${contribRows.length === 1 ? '' : 's'})</h2>
+${buildTable(contribHeaders, contribRows)}
+<h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
+${buildTable(budgetHeaders, budgetRows)}
+<script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+            const win = window.open('', '_blank');
+            if (win) {
+                win.document.write(html);
+                win.document.close();
+            } else {
+                showToast('Pop-up blocked. Please allow pop-ups to export PDF.', 'warning');
+            }
+        }
+
+        function exportConferenceWord(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows, filename) {
+            function buildTable(headers, rows) {
+                const headerCells = headers.map(h =>
+                    `<th style="background:#667eea;color:#fff;border:1px solid #5a6fd4;padding:7px 9px;text-align:left;">${escapeHtml(h)}</th>`
+                ).join('');
+                const bodyRows = rows.map(r =>
+                    `<tr>${r.map(c => `<td style="border:1px solid #ddd;padding:6px 9px;">${escapeHtml(String(c == null ? '' : c))}</td>`).join('')}</tr>`
+                ).join('');
+                return `<table style="border-collapse:collapse;width:100%;font-size:11pt;"><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+            }
+            const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:w="urn:schemas-microsoft-com:office:word"
+ xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${escapeHtml(conferenceName)}</title>
+<style>body{font-family:Arial,sans-serif;margin:24px;}h1,h2{color:#2a5298;}table{border-collapse:collapse;width:100%;font-size:11pt;}</style>
+</head><body>
+<h1>${escapeHtml(conferenceName)}</h1>
+<p>Exported: ${new Date().toLocaleDateString()}</p>
+<h2>Contributions (${contribRows.length} record${contribRows.length === 1 ? '' : 's'})</h2>
+${buildTable(contribHeaders, contribRows)}
+<h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
+${buildTable(budgetHeaders, budgetRows)}
+</body></html>`;
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (filename || 'export') + '.doc';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        const BUDGET_EXPORT_HEADERS = ['#', 'Title', 'Quantity', 'Unit Amount', 'Total'];
+
         document.getElementById('export-conference-csv').addEventListener('click', () => {
             const records = getFilteredConferenceRecords();
+            const budgetData = budgetCache[activeConferenceKey] || [];
             const escapeCSV = v => {
                 if (v == null) return '';
                 const s = String(v);
                 return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
             };
-            const csv = 'Member,Type,Amount,Date,Branch,Conference\n' +
+            let csv = 'Member,Type,Amount,Date,Branch,Conference\n' +
                 records.map(r => [
                     escapeCSV(r.member),
                     escapeCSV(normalizeContributionType(r.type)),
@@ -499,6 +592,19 @@
                     escapeCSV(r.branch),
                     escapeCSV(r.conferenceName || getActiveConferenceName())
                 ].join(',')).join('\n');
+            if (budgetData.length > 0) {
+                let grandTotal = 0;
+                csv += '\n\n' + escapeCSV(getActiveConferenceName() + ' Budget') + '\n';
+                csv += '#,Title,Quantity,Unit Amount,Total\n';
+                budgetData.forEach((item, index) => {
+                    const qty = parseFloat(item.quantity) || 0;
+                    const amt = parseFloat(item.amount) || 0;
+                    const lineTotal = qty * amt;
+                    grandTotal += lineTotal;
+                    csv += [index + 1, escapeCSV(item.title), qty, amt.toFixed(2), lineTotal.toFixed(2)].join(',') + '\n';
+                });
+                csv += escapeCSV(',Grand Total,,,') + escapeCSV(grandTotal.toFixed(2));
+            }
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -510,18 +616,24 @@
         });
 
         document.getElementById('export-conference-pdf').addEventListener('click', () => {
-            exportToPDF(
-                getActiveConferenceName() + ' Contributions',
+            const budgetData = budgetCache[activeConferenceKey] || [];
+            exportConferencePDF(
+                getActiveConferenceName(),
                 ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
-                getConferenceExportRows()
+                getConferenceExportRows(),
+                BUDGET_EXPORT_HEADERS,
+                getBudgetExportRows(budgetData)
             );
         });
 
         document.getElementById('export-conference-word').addEventListener('click', () => {
-            exportToWord(
-                getActiveConferenceName() + ' Contributions',
+            const budgetData = budgetCache[activeConferenceKey] || [];
+            exportConferenceWord(
+                getActiveConferenceName(),
                 ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
                 getConferenceExportRows(),
+                BUDGET_EXPORT_HEADERS,
+                getBudgetExportRows(budgetData),
                 `${activeConferenceKey}-conference`
             );
             showToast('Conference contributions exported to Word!', 'info');
@@ -530,11 +642,20 @@
         /* ═══════════════════════════════════════════
            BUDGET TAB
         ═══════════════════════════════════════════ */
-        const BUDGET_COLLECTION = 'conference_budget';
+        let activeBudgetKey = 'easter';
+        const BUDGET_COLLECTIONS = {
+            easter: 'conference_budget_easter',
+            september: 'conference_budget_september'
+        };
+        const budgetCache = { easter: [], september: [] };
         const budgetForm = document.getElementById('add-budget-form');
         const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
         let allBudgetItems = [];
         let editingBudgetId = null;
+
+        function getBudgetCollection() {
+            return BUDGET_COLLECTIONS[activeBudgetKey];
+        }
 
         function renderBudget(data) {
             const tbody = document.getElementById('budget-tbody');
@@ -574,10 +695,15 @@
             document.getElementById('budget-item-count').textContent = data.length;
         }
 
-        function populateBudget() {
-            loadFromFirebase(BUDGET_COLLECTION, (data) => {
-                allBudgetItems = data;
-                renderBudget(data);
+        function populateBudget(key) {
+            const col = BUDGET_COLLECTIONS[key || activeBudgetKey];
+            loadFromFirebase(col, (data) => {
+                const k = key || activeBudgetKey;
+                budgetCache[k] = data;
+                if (k === activeBudgetKey) {
+                    allBudgetItems = data;
+                    renderBudget(data);
+                }
             });
         }
 
@@ -603,9 +729,9 @@
 
         function deleteBudgetItem(id) {
             if (confirm('Are you sure you want to delete this budget item?')) {
-                deleteFromFirebase(BUDGET_COLLECTION, id).then(() => {
+                deleteFromFirebase(getBudgetCollection(), id).then(() => {
                     showToast('Budget item deleted.', 'success');
-                    populateBudget();
+                    populateBudget(activeBudgetKey);
                 });
             }
         }
@@ -619,14 +745,14 @@
             };
             const isEditing = Boolean(editingBudgetId);
             const action = isEditing
-                ? updateInFirebase(BUDGET_COLLECTION, editingBudgetId, data)
-                : saveToFirebase(BUDGET_COLLECTION, data);
+                ? updateInFirebase(getBudgetCollection(), editingBudgetId, data)
+                : saveToFirebase(getBudgetCollection(), data);
 
             action.then(() => {
                 e.target.reset();
                 resetBudgetForm();
                 showToast(isEditing ? 'Budget item updated!' : 'Budget item added!', 'success');
-                populateBudget();
+                populateBudget(activeBudgetKey);
             });
         });
 
@@ -641,6 +767,9 @@
                 document.getElementById('budget-grand-total-cell').textContent = 'R ' + (baseTotal + qty * amt).toFixed(2);
             });
         });
+
+        populateBudget('easter');
+        populateBudget('september');
     </script>
 </body>
 </html>
