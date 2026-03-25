@@ -48,7 +48,8 @@
         }
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
-        #budget-grand-total-row td {
+        #budget-grand-total-row td,
+        #conference-grand-total-row td {
             font-weight: 700;
             color: #2a5298;
             background: #f0f4ff;
@@ -152,6 +153,13 @@
                     </tr>
                 </thead>
                 <tbody></tbody>
+                <tfoot>
+                    <tr id="conference-grand-total-row">
+                        <td colspan="2" style="text-align:right;">Grand Total</td>
+                        <td id="conference-grand-total-cell">R 0.00</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
             </table>
 
             <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -287,6 +295,10 @@
             tbody.innerHTML = '';
             updateRecordCount('conference-count', data.length);
             updateSummary(data);
+            const grandTotal = (allConferenceRecords || [])
+                .filter(r => normalizeConferenceKey(r.conferenceName) === activeConferenceKey)
+                .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            document.getElementById('conference-grand-total-cell').textContent = 'R ' + grandTotal.toFixed(2);
 
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No conference contributions found.</td></tr>';
