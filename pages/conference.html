@@ -344,7 +344,7 @@
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.panel === 'budget');
             });
-            populateBudget();
+            renderBudget(allBudgetItems);
         }
 
         function populateTable() {
@@ -422,6 +422,7 @@
         });
 
         populateTable();
+        populateBudget();
 
         document.getElementById('import-conference-btn').addEventListener('click', () => {
             const fileInput = document.getElementById('import-conference-file');
