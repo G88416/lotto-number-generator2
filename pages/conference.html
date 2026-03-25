@@ -345,11 +345,14 @@
             document.getElementById('panel-contributions').classList.remove('active');
             document.getElementById('panel-budget').classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.panel === activeBudgetKey + '-budget');
+                if (btn.dataset.panel) {
+                    btn.classList.toggle('active', btn.dataset.panel === activeBudgetKey + '-budget');
+                } else {
+                    btn.classList.remove('active');
+                }
             });
             allBudgetItems = budgetCache[activeBudgetKey] || [];
             renderBudget(allBudgetItems);
-            populateBudget(activeBudgetKey);
         }
 
         function populateTable() {
@@ -603,7 +606,7 @@ ${buildTable(budgetHeaders, budgetRows)}
                     grandTotal += lineTotal;
                     csv += [index + 1, escapeCSV(item.title), qty, amt.toFixed(2), lineTotal.toFixed(2)].join(',') + '\n';
                 });
-                csv += escapeCSV(',Grand Total,,,') + escapeCSV(grandTotal.toFixed(2));
+                    csv += ',' + escapeCSV('Grand Total') + ',,,' + grandTotal.toFixed(2);
             }
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
