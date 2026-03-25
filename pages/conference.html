@@ -496,7 +496,8 @@
         });
 
         function getConferenceExportRows() {
-            return getFilteredConferenceRecords().map(r => [
+            const records = getFilteredConferenceRecords();
+            const rows = records.map(r => [
                 r.member || '',
                 normalizeContributionType(r.type),
                 'R ' + parseFloat(r.amount || 0).toFixed(2),
@@ -504,6 +505,9 @@
                 r.branch || '',
                 r.conferenceName || getActiveConferenceName()
             ]);
+            const grandTotal = records.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            rows.push(['', 'Grand Total', 'R ' + grandTotal.toFixed(2), '', '', '']);
+            return rows;
         }
 
         function getBudgetExportRows(budgetData) {
@@ -528,6 +532,7 @@
                 return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
             }
             const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const contribItemCount = Math.max(0, contribRows.length - 1);
             const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(conferenceName)}</title>
 <style>
   body{font-family:Arial,sans-serif;margin:24px;color:#333;}
@@ -542,7 +547,7 @@
 </style></head><body>
 <h1>${escapeHtml(conferenceName)}</h1>
 <p class="meta">Exported: ${new Date().toLocaleDateString()}</p>
-<h2>Contributions (${contribRows.length} record${contribRows.length === 1 ? '' : 's'})</h2>
+<h2>Contributions (${contribItemCount} record${contribItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(contribHeaders, contribRows)}
 <h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(budgetHeaders, budgetRows)}
@@ -568,6 +573,7 @@ ${buildTable(budgetHeaders, budgetRows)}
                 return `<table style="border-collapse:collapse;width:100%;font-size:11pt;"><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
             }
             const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const contribItemCount = Math.max(0, contribRows.length - 1);
             const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
  xmlns:w="urn:schemas-microsoft-com:office:word"
  xmlns="http://www.w3.org/TR/REC-html40">
@@ -576,7 +582,7 @@ ${buildTable(budgetHeaders, budgetRows)}
 </head><body>
 <h1>${escapeHtml(conferenceName)}</h1>
 <p>Exported: ${new Date().toLocaleDateString()}</p>
-<h2>Contributions (${contribRows.length} record${contribRows.length === 1 ? '' : 's'})</h2>
+<h2>Contributions (${contribItemCount} record${contribItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(contribHeaders, contribRows)}
 <h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(budgetHeaders, budgetRows)}
@@ -600,6 +606,7 @@ ${buildTable(budgetHeaders, budgetRows)}
                 const s = String(v);
                 return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
             };
+            const contribGrandTotal = records.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
             let csv = 'Member,Type,Amount,Date,Branch,Conference\n' +
                 records.map(r => [
                     escapeCSV(r.member),
@@ -609,6 +616,7 @@ ${buildTable(budgetHeaders, budgetRows)}
                     escapeCSV(r.branch),
                     escapeCSV(r.conferenceName || getActiveConferenceName())
                 ].join(',')).join('\n');
+            csv += '\n,' + escapeCSV('Grand Total') + ',' + escapeCSV('R ' + contribGrandTotal.toFixed(2)) + ',,,';
             if (budgetData.length > 0) {
                 let grandTotal = 0;
                 csv += '\n\n' + escapeCSV(getActiveConferenceName() + ' Budget') + '\n';
