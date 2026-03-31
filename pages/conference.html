@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- PWA / iPhone support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CFM Church">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <title>Conference - Charity and Faith Mission</title>
     <link rel="stylesheet" href="../common.css">
     <script src="../common.js"></script>
@@ -604,6 +611,39 @@
             ]);
         }
 
+        function getContributionSummaryRows(records) {
+            const sums = { Conference: 0, Scholar: 0, Pensioner: 0 };
+            (records || getFilteredConferenceRecords()).forEach(r => {
+                sums[normalizeContributionType(r.type)] += parseFloat(r.amount || 0) || 0;
+            });
+            const grandTotal = sums.Conference + sums.Scholar + sums.Pensioner;
+            return [
+                ['', '', '', '', '', ''],
+                ['', 'Conference Total', 'R ' + sums.Conference.toFixed(2), '', '', ''],
+                ['', 'Scholar Total',    'R ' + sums.Scholar.toFixed(2),    '', '', ''],
+                ['', 'Pensioner Total',  'R ' + sums.Pensioner.toFixed(2),  '', '', ''],
+                ['', 'Grand Total',      'R ' + grandTotal.toFixed(2),      '', '', '']
+            ];
+        }
+
+        function getExpenseExportRows(expenseData) {
+            let grandTotal = 0;
+            const rows = (expenseData || []).map(r => {
+                const amt = parseFloat(r.amount || 0);
+                grandTotal += amt;
+                return [
+                    formatDate(r.date),
+                    r.description || '',
+                    r.category || '',
+                    'R ' + amt.toFixed(2),
+                    r.approvedBy || '',
+                    r.notes || ''
+                ];
+            });
+            rows.push(['', '', 'Grand Total', 'R ' + grandTotal.toFixed(2), '', '']);
+            return rows;
+        }
+
         function getBudgetExportRows(budgetData) {
             let grandTotal = 0;
             const rows = (budgetData || []).map((item, index) => {
@@ -617,7 +657,7 @@
             return rows;
         }
 
-        function exportConferencePDF(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows) {
+        function exportConferencePDF(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows, expenseHeaders, expenseRows) {
             function buildTable(headers, rows) {
                 const headerCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
                 const bodyRows = rows.map(r =>
@@ -626,6 +666,11 @@
                 return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
             }
             const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const expenseItemCount = Math.max(0, (expenseRows || []).length - 1);
+            const expenseSection = expenseHeaders && expenseRows
+                ? `<h2>Expenses (${expenseItemCount} record${expenseItemCount === 1 ? '' : 's'})</h2>
+${buildTable(expenseHeaders, expenseRows)}`
+                : '';
             const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(conferenceName)}</title>
 <style>
   body{font-family:Arial,sans-serif;margin:24px;color:#333;}
@@ -644,6 +689,7 @@
 ${buildTable(contribHeaders, contribRows)}
 <h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(budgetHeaders, budgetRows)}
+${expenseSection}
 <script>window.onload=function(){window.print();};<\/script>
 </body></html>`;
             const win = window.open('', '_blank');
@@ -655,7 +701,7 @@ ${buildTable(budgetHeaders, budgetRows)}
             }
         }
 
-        function exportConferenceWord(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows, filename) {
+        function exportConferenceWord(conferenceName, contribHeaders, contribRows, budgetHeaders, budgetRows, filename, expenseHeaders, expenseRows) {
             function buildTable(headers, rows) {
                 const headerCells = headers.map(h =>
                     `<th style="background:#667eea;color:#fff;border:1px solid #5a6fd4;padding:7px 9px;text-align:left;">${escapeHtml(h)}</th>`
@@ -666,6 +712,11 @@ ${buildTable(budgetHeaders, budgetRows)}
                 return `<table style="border-collapse:collapse;width:100%;font-size:11pt;"><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
             }
             const budgetItemCount = Math.max(0, budgetRows.length - 1);
+            const expenseItemCount = Math.max(0, (expenseRows || []).length - 1);
+            const expenseSection = expenseHeaders && expenseRows
+                ? `<h2>Expenses (${expenseItemCount} record${expenseItemCount === 1 ? '' : 's'})</h2>
+${buildTable(expenseHeaders, expenseRows)}`
+                : '';
             const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
  xmlns:w="urn:schemas-microsoft-com:office:word"
  xmlns="http://www.w3.org/TR/REC-html40">
@@ -678,6 +729,7 @@ ${buildTable(budgetHeaders, budgetRows)}
 ${buildTable(contribHeaders, contribRows)}
 <h2>Budget (${budgetItemCount} item${budgetItemCount === 1 ? '' : 's'})</h2>
 ${buildTable(budgetHeaders, budgetRows)}
+${expenseSection}
 </body></html>`;
             const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
@@ -707,6 +759,15 @@ ${buildTable(budgetHeaders, budgetRows)}
                     escapeCSV(r.branch),
                     escapeCSV(r.conferenceName || getActiveConferenceName())
                 ].join(',')).join('\n');
+            // Append contribution type subtotals
+            const sums = { Conference: 0, Scholar: 0, Pensioner: 0 };
+            records.forEach(r => { sums[normalizeContributionType(r.type)] += parseFloat(r.amount || 0) || 0; });
+            const contribGrand = sums.Conference + sums.Scholar + sums.Pensioner;
+            csv += '\n';
+            csv += ',' + escapeCSV('Conference Total') + ',' + sums.Conference.toFixed(2) + ',,,\n';
+            csv += ',' + escapeCSV('Scholar Total')    + ',' + sums.Scholar.toFixed(2)    + ',,,\n';
+            csv += ',' + escapeCSV('Pensioner Total')  + ',' + sums.Pensioner.toFixed(2)  + ',,,\n';
+            csv += ',' + escapeCSV('Grand Total')      + ',' + contribGrand.toFixed(2)    + ',,,';
             if (budgetData.length > 0) {
                 let grandTotal = 0;
                 csv += '\n\n' + escapeCSV(getActiveConferenceName() + ' Budget') + '\n';
@@ -718,7 +779,26 @@ ${buildTable(budgetHeaders, budgetRows)}
                     grandTotal += lineTotal;
                     csv += [index + 1, escapeCSV(item.title), qty, amt.toFixed(2), lineTotal.toFixed(2)].join(',') + '\n';
                 });
-                    csv += ',' + escapeCSV('Grand Total') + ',,,' + grandTotal.toFixed(2);
+                csv += ',' + escapeCSV('Grand Total') + ',,,' + grandTotal.toFixed(2);
+            }
+            const expenseData = expenseCache[activeConferenceKey] || [];
+            if (expenseData.length > 0) {
+                let expGrandTotal = 0;
+                csv += '\n\n' + escapeCSV(getActiveConferenceName() + ' Expenses') + '\n';
+                csv += 'Date,Description,Category,Amount,Approved By,Notes\n';
+                expenseData.forEach(r => {
+                    const amt = parseFloat(r.amount || 0);
+                    expGrandTotal += amt;
+                    csv += [
+                        escapeCSV(r.date),
+                        escapeCSV(r.description || ''),
+                        escapeCSV(r.category || ''),
+                        amt.toFixed(2),
+                        escapeCSV(r.approvedBy || ''),
+                        escapeCSV(r.notes || '')
+                    ].join(',') + '\n';
+                });
+                csv += ',,' + escapeCSV('Grand Total') + ',' + expGrandTotal.toFixed(2) + ',,';
             }
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -732,24 +812,32 @@ ${buildTable(budgetHeaders, budgetRows)}
 
         document.getElementById('export-conference-pdf').addEventListener('click', () => {
             const budgetData = budgetCache[activeConferenceKey] || [];
+            const expenseData = expenseCache[activeConferenceKey] || [];
+            const contribRows = getConferenceExportRows().concat(getContributionSummaryRows());
             exportConferencePDF(
                 getActiveConferenceName(),
                 ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
-                getConferenceExportRows(),
+                contribRows,
                 BUDGET_EXPORT_HEADERS,
-                getBudgetExportRows(budgetData)
+                getBudgetExportRows(budgetData),
+                ['Date', 'Description', 'Category', 'Amount', 'Approved By', 'Notes'],
+                getExpenseExportRows(expenseData)
             );
         });
 
         document.getElementById('export-conference-word').addEventListener('click', () => {
             const budgetData = budgetCache[activeConferenceKey] || [];
+            const expenseData = expenseCache[activeConferenceKey] || [];
+            const contribRows = getConferenceExportRows().concat(getContributionSummaryRows());
             exportConferenceWord(
                 getActiveConferenceName(),
                 ['Member', 'Type', 'Amount', 'Date', 'Branch', 'Conference'],
-                getConferenceExportRows(),
+                contribRows,
                 BUDGET_EXPORT_HEADERS,
                 getBudgetExportRows(budgetData),
-                `${activeConferenceKey}-conference`
+                `${activeConferenceKey}-conference`,
+                ['Date', 'Description', 'Category', 'Amount', 'Approved By', 'Notes'],
+                getExpenseExportRows(expenseData)
             );
             showToast('Conference contributions exported to Word!', 'info');
         });
@@ -1038,7 +1126,8 @@ ${buildTable(budgetHeaders, budgetRows)}
         expenseSearch.addEventListener('input', () => renderExpenses(getFilteredExpenseRecords()));
 
         document.getElementById('export-conf-expense-pdf').addEventListener('click', () => {
-            const rows = getFilteredExpenseRecords().map(r => [
+            const filtered = getFilteredExpenseRecords();
+            const rows = filtered.map(r => [
                 formatDate(r.date),
                 r.description || '',
                 r.category || '',
@@ -1046,6 +1135,8 @@ ${buildTable(budgetHeaders, budgetRows)}
                 r.approvedBy || '',
                 r.notes || ''
             ]);
+            const grandTotal = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            rows.push(['', '', 'Grand Total', 'R ' + grandTotal.toFixed(2), '', '']);
             exportToPDF(
                 CONFERENCES[activeExpenseKey] + ' Expenses',
                 ['Date', 'Description', 'Category', 'Amount', 'Approved By', 'Notes'],
@@ -1054,7 +1145,8 @@ ${buildTable(budgetHeaders, budgetRows)}
         });
 
         document.getElementById('export-conf-expense-word').addEventListener('click', () => {
-            const rows = getFilteredExpenseRecords().map(r => [
+            const filtered = getFilteredExpenseRecords();
+            const rows = filtered.map(r => [
                 formatDate(r.date),
                 r.description || '',
                 r.category || '',
@@ -1062,6 +1154,8 @@ ${buildTable(budgetHeaders, budgetRows)}
                 r.approvedBy || '',
                 r.notes || ''
             ]);
+            const grandTotal = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            rows.push(['', '', 'Grand Total', 'R ' + grandTotal.toFixed(2), '', '']);
             exportToWord(
                 CONFERENCES[activeExpenseKey] + ' Expenses',
                 ['Date', 'Description', 'Category', 'Amount', 'Approved By', 'Notes'],
