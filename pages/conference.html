@@ -298,6 +298,9 @@
                 <div class="summary-item" style="background:linear-gradient(135deg,#56ab2f 0%,#a8e063 100%);">
                     <span id="conf-exp-count-display">0</span>Records
                 </div>
+                <div class="summary-item" style="background:linear-gradient(135deg,#2a5298 0%,#4facfe 100%);">
+                    <span id="conf-exp-amount-on-hand">R 0.00</span>Amount on Hand
+                </div>
             </div>
 
             <div class="table-toolbar" style="margin-top:20px;">
@@ -474,6 +477,9 @@
             loadFromFirebase(COLLECTION, (data) => {
                 allConferenceRecords = data;
                 refreshConferenceView();
+                if (document.getElementById('panel-expenses').classList.contains('active')) {
+                    renderExpenses(getFilteredExpenseRecords());
+                }
             });
         }
 
@@ -1029,6 +1035,13 @@ ${expenseSection}
             document.getElementById('conf-expense-grand-total-cell').textContent = 'R ' + grandTotal.toFixed(2);
             document.getElementById('conf-exp-total').textContent = 'R ' + grandTotal.toFixed(2);
             document.getElementById('conf-exp-count-display').textContent = allExpenseRecords.length;
+            const totalContributions = (allConferenceRecords || [])
+                .filter(r => normalizeConferenceKey(r.conferenceName) === activeExpenseKey)
+                .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const amountOnHand = totalContributions - grandTotal;
+            const onHandEl = document.getElementById('conf-exp-amount-on-hand');
+            onHandEl.textContent = 'R ' + amountOnHand.toFixed(2);
+            onHandEl.style.color = amountOnHand < 0 ? '#ff4444' : '';
 
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No expense records found.</td></tr>';
